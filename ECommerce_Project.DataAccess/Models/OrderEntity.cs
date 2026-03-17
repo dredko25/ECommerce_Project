@@ -24,6 +24,8 @@ public class OrderEntity
 
     public OrderStatus Status { get; set; } = OrderStatus.Pending;
 
+    public string Address { get; set; } = string.Empty;
+
     public string PaymentMethod { get; set; } = string.Empty;
 
     public decimal TotalAmount { get; set; } = 0;

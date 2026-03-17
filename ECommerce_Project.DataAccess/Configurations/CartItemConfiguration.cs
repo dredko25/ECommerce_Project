@@ -20,7 +20,7 @@ public class CartItemConfiguration : IEntityTypeConfiguration<CartItemEntity>
                .WithMany(p => p.CartItems)
                .HasForeignKey(ci => ci.ProductId)
                .IsRequired()
-               .OnDelete(DeleteBehavior.Restrict);
+               .OnDelete(DeleteBehavior.SetNull);
 
         builder.Property(ci => ci.Quantity)
                .IsRequired();

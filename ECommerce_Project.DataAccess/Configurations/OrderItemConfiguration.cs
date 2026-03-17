@@ -20,7 +20,7 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItemEntity>
                .WithMany(p => p.OrderItems)
                .HasForeignKey(oi => oi.ProductId)
                .IsRequired()
-               .OnDelete(DeleteBehavior.Restrict);
+               .OnDelete(DeleteBehavior.SetNull);
 
         builder.Property(oi => oi.Price)
                .IsRequired()

@@ -1,8 +1,16 @@
+using Microsoft.EntityFrameworkCore;
+using ECommerce_Project.DataAccess;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
 
+builder.Services.AddDbContext<ECommerceDbContext>(
+    options =>
+    {
+        options.UseNpgsql(builder.Configuration.GetConnectionString("DbConnection"));
+    });
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

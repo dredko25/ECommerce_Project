@@ -14,7 +14,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<OrderEntity>
                .WithMany(u => u.Orders)
                .HasForeignKey(o => o.UserId)
                .IsRequired()
-               .OnDelete(DeleteBehavior.Cascade);
+               .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasMany(o => o.OrderItems)
                .WithOne(oi => oi.Order)
@@ -31,6 +31,10 @@ public class OrderConfiguration : IEntityTypeConfiguration<OrderEntity>
 
         builder.Property(o => o.OrderDate)
                .IsRequired();
+
+        builder.Property(o => o.Address)
+               .IsRequired()
+               .HasMaxLength(200);
 
         builder.Property(o => o.PaymentMethod)
                .IsRequired()

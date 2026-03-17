@@ -25,13 +25,9 @@ public class UserConfiguration : IEntityTypeConfiguration<UserEntity>
         builder.HasIndex(u => u.ContactNumber)
                .IsUnique();
 
-        builder.Property(u => u.Address)
-               .IsRequired()
-               .HasMaxLength(200);
-
         builder.Property(u => u.Email)
                .IsRequired()
-               .HasMaxLength(20);
+               .HasMaxLength(50);
 
         builder.HasIndex(u => u.Email)
                .IsUnique();
