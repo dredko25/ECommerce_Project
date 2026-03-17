@@ -16,9 +16,9 @@ public class UserEntity
 
     public string PasswordHash { get; set; } = string.Empty;
 
-    public bool IsAdmin { get; set; }
+    public bool IsAdmin { get; set; } = false;
 
-    public Guid CartId { get; set; }
+    public Guid? CartId { get; set; }
 
     public CartEntity? Cart { get; set; }
 
