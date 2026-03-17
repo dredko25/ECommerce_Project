@@ -17,4 +17,6 @@ public class ProductEntity
     public Guid? CategoryId { get; set; }
 
     public CategoryEntity? Category { get; set; }
+
+    public List<OrderItemEntity> OrderItems { get; set; } = [];
 }
