@@ -12,7 +12,9 @@ public class ProductEntity
 
     public int QuantityAvailable { get; set; } = 0;
 
-    public Guid CategoryId { get; set; }
+    public string? ImageUrl { get; set; } = string.Empty;
+
+    public Guid? CategoryId { get; set; }
 
     public CategoryEntity? Category { get; set; }
 }

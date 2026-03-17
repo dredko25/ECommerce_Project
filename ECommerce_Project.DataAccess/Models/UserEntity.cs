@@ -18,6 +18,10 @@ public class UserEntity
 
     public bool IsAdmin { get; set; }
 
+    public Guid CartId { get; set; }
+
+    public CartEntity? Cart { get; set; }
+
     public List<OrderEntity> Orders { get; set; } = [];
 
 }
