@@ -1,4 +1,6 @@
-﻿namespace ECommerce_Project.DataAccess.Models;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace ECommerce_Project.DataAccess.Models;
 
 public class OrderItemEntity
 {
@@ -8,7 +10,7 @@ public class OrderItemEntity
 
     public OrderEntity? Order { get; set; }
 
-    public Guid ProductId { get; set; }
+    public Guid? ProductId { get; set; }
 
     public ProductEntity? Product { get; set; }
 
@@ -16,6 +18,7 @@ public class OrderItemEntity
 
     public int Quantity { get; set; } = 0;
 
+    [NotMapped]
     public decimal Total => Price * Quantity;
 
 }
