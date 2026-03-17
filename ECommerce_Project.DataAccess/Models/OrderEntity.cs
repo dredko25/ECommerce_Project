@@ -1,5 +1,15 @@
 ﻿namespace ECommerce_Project.DataAccess.Models;
 
+public enum OrderStatus
+{
+    Pending,
+    Paid,
+    Shipped,
+    Delivered,
+    Cancelled
+}
+
+
 public class OrderEntity
 {
     public Guid Id { get; set; }
@@ -12,7 +22,7 @@ public class OrderEntity
 
     public DateTime OrderDate { get; set; }
 
-    public enum OrderStatus { Pending, Paid, Shipped, Delivered, Cancelled }
+    public OrderStatus Status { get; set; } = OrderStatus.Pending;
 
     public string PaymentMethod { get; set; } = string.Empty;
 
