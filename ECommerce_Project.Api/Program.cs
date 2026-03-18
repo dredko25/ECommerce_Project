@@ -11,6 +11,8 @@ builder.Services.AddDbContext<ECommerceDbContext>(
     {
         options.UseNpgsql(builder.Configuration.GetConnectionString("DbConnection"));
     });
+
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
