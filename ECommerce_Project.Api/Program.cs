@@ -12,6 +12,7 @@ builder.Services.AddDbContext<ECommerceDbContext>(
         options.UseNpgsql(builder.Configuration.GetConnectionString("DbConnection"));
     });
 
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 var app = builder.Build();
 
