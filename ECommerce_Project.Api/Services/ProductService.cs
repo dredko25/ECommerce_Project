@@ -78,9 +78,14 @@ public class ProductService : IProductService
         var product = await _context.Products.FindAsync(id);
         if (product is null) return null;
 
-        _mapper.Map(dto, product);
-        await _context.SaveChangesAsync();
+        if (dto.Name != null) product.Name = dto.Name;
+        if (dto.Description != null) product.Description = dto.Description;
+        if (dto.Price.HasValue) product.Price = dto.Price.Value;
+        if (dto.QuantityAvailable.HasValue) product.QuantityAvailable = dto.QuantityAvailable.Value;
+        if (dto.ImageUrl != null) product.ImageUrl = dto.ImageUrl;
+        if (dto.CategoryId.HasValue) product.CategoryId = dto.CategoryId.Value;
 
+        await _context.SaveChangesAsync();
         return await GetByIdAsync(id);
     }
 

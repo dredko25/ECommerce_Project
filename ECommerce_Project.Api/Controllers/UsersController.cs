@@ -36,7 +36,7 @@ public class UsersController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
-    [HttpPut("{id:guid}")]
+    [HttpPatch("{id:guid}")]
     public async Task<ActionResult<UserResponseDto>> Update(Guid id, UpdateUserDto dto)
     {
         var updated = await _userService.UpdateAsync(id, dto);

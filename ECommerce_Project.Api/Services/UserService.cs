@@ -53,9 +53,11 @@ public class UserService : IUserService
         var user = await _context.Users.FindAsync(id);
         if (user is null) return null;
 
-        _mapper.Map(dto, user);
-        await _context.SaveChangesAsync();
+        if (dto.FirstName != null) user.FirstName = dto.FirstName;
+        if (dto.LastName != null) user.LastName = dto.LastName;
+        if (dto.ContactNumber != null) user.ContactNumber = dto.ContactNumber;
 
+        await _context.SaveChangesAsync();
         return _mapper.Map<UserResponseDto>(user);
     }
 
