@@ -23,8 +23,6 @@ builder.Services.AddAutoMapper(cfg => {}, AppDomain.CurrentDomain.GetAssemblies(
 // Add product service to the dependency injection container
 builder.Services.AddScoped<IProductService, ProductService>();
 
-// ── Сервіси — реєструємо інтерфейс + реалізацію ──
-// Scoped = один екземпляр на HTTP запит (правильно для сервісів з DbContext)
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IOrderService, OrderService>();

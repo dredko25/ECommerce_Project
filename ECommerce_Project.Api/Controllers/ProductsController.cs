@@ -1,29 +1,4 @@
-﻿//using ECommerce_Project.Api.DTOs.Product;
-//using ECommerce_Project.Api.Interfaces;
-//using Microsoft.AspNetCore.Mvc;
-
-//namespace ECommerce_Project.Api.Controllers
-//{
-//    [ApiController]
-//    [Route("api/[controller]")]
-//    public class ProductsController : ControllerBase
-//    {
-//        private readonly IProductService _productService;
-
-//        public ProductsController(IProductService productService)
-//        {
-//            _productService = productService;
-//        }
-
-//        [HttpGet]
-//        public async Task<ActionResult<IEnumerable<ProductSummaryDto>>> GetProducts()
-//        {
-//            var products = await _productService.GetProductsAsync();
-//            return Ok(products);
-//        }
-//    }
-//}
-using ECommerce_Project.Api.DTOs.Product;
+﻿using ECommerce_Project.Api.DTOs.Product;
 using ECommerce_Project.Api.Helpers;
 using ECommerce_Project.Api.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -39,20 +14,9 @@ public class ProductsController : ControllerBase
         _productService = productService;
     }
 
-    //[HttpGet]
-    //public async Task<ActionResult<List<ProductSummaryDto>>> GetAll(
-    //    [FromQuery] Guid? categoryId)
-    //{
-    //    var products = categoryId.HasValue
-    //        ? await _productService.GetByCategoryAsync(categoryId.Value)
-    //        : await _productService.GetAllAsync();
-
-    //    return Ok(products);
-    //}
-
     [HttpGet]
     public async Task<ActionResult<PagedResponse<ProductSummaryDto>>> GetProducts(
-    [FromQuery] ProductParams productParams) // ASP.NET сам збере параметри з URL
+    [FromQuery] ProductParams productParams)
     {
         var products = await _productService.GetProductsAsync(productParams);
         return Ok(products);
