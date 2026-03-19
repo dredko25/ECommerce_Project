@@ -65,7 +65,10 @@ namespace ECommerce_Project.Api.Services
             var category = await _context.Categories.FindAsync(id);
             if (category is null) return null;
 
-            _mapper.Map(dto, category);
+            if (dto.Name != null) category.Name = dto.Name;
+            if (dto.Description != null) category.Description = dto.Description;
+
+            //_mapper.Map(dto, category);
             await _context.SaveChangesAsync();
 
             return await GetByIdAsync(id);

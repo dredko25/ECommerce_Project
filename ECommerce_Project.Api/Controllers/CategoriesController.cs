@@ -35,7 +35,7 @@ namespace ECommerce_Project.Api.Controllers
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
-        [HttpPut("{id:guid}")]
+        [HttpPatch("{id:guid}")]
         public async Task<ActionResult<CategoryResponseDto>> Update(Guid id, UpdateCategoryDto dto)
         {
             var updated = await _categoryService.UpdateAsync(id, dto);
