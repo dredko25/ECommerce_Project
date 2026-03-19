@@ -3,13 +3,15 @@
     public class ProductParams
     {
         public string? Search { get; set; }
+
         public Guid? CategoryId { get; set; }
 
-        // Пагінація
         private const int MaxPageSize = 50;
+
         public int PageNumber { get; set; } = 1;
 
         private int _pageSize = 10;
+
         public int PageSize
         {
             get => _pageSize;
