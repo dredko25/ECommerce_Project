@@ -27,7 +27,7 @@ public class CartService : ICartService
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.UserId == userId);
 
-        return cart is null ? null : _mapper.Map<CartResponseDto>(cart);
+        return _mapper.Map<CartResponseDto?>(cart);
     }
 
     public async Task<CartResponseDto> AddItemAsync(Guid userId, AddToCartDto dto)

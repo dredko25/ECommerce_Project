@@ -48,7 +48,7 @@ public class OrderService : IOrderService
                 .ThenInclude(i => i.Product)
             .FirstOrDefaultAsync(o => o.Id == id);
 
-        return order is null ? null : _mapper.Map<OrderResponseDto>(order);
+        return _mapper.Map<OrderResponseDto?>(order);
     }
 
     public async Task<OrderResponseDto> CreateAsync(Guid userId, CreateOrderDto dto)
