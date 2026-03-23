@@ -1,6 +1,6 @@
 using ECommerce_Project.Api.Interfaces;
-using ECommerce_Project.Api.Mapping;
 using ECommerce_Project.Api.Services;
+using ECommerce_Project.Application.Services;
 using ECommerce_Project.DataAccess;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,11 +17,29 @@ builder.Services.AddDbContext<ECommerceDbContext>(
         options.UseNpgsql(builder.Configuration.GetConnectionString("DbConnection"));
     });
 
+
 builder.Services.AddAutoMapper(cfg => {}, AppDomain.CurrentDomain.GetAssemblies());
 
+// Add product service to the dependency injection container
 builder.Services.AddScoped<IProductService, ProductService>();
 
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<ICartService, CartService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -31,16 +49,18 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 
 app.UseRouting();
-
 app.UseAuthorization();
 
 app.MapStaticAssets();
 app.MapRazorPages()
    .WithStaticAssets();
 
+// Map controller routes
 app.MapControllers();
 
 app.Run();
