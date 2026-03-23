@@ -57,7 +57,7 @@ namespace ECommerce_Project.Api.Services
                 .Include(c => c.Products)
                 .FirstOrDefaultAsync(c => c.Id == id);
 
-            return category is null ? null : _mapper.Map<CategoryResponseDto>(category);
+            return _mapper.Map<CategoryResponseDto?>(category);
         }
 
         public async Task<CategoryResponseDto?> UpdateAsync(Guid id, UpdateCategoryDto dto)
@@ -68,7 +68,6 @@ namespace ECommerce_Project.Api.Services
             if (dto.Name != null) category.Name = dto.Name;
             if (dto.Description != null) category.Description = dto.Description;
 
-            //_mapper.Map(dto, category);
             await _context.SaveChangesAsync();
 
             return await GetByIdAsync(id);

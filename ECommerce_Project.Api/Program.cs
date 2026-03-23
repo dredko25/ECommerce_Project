@@ -51,13 +51,9 @@ if (!app.Environment.IsDevelopment())
 
 
 app.UseHttpsRedirection();
-app.MapControllers();
-app.Run();
-
-app.UseHttpsRedirection();
+app.UseStaticFiles();
 
 app.UseRouting();
-
 app.UseAuthorization();
 
 app.MapStaticAssets();
