@@ -83,7 +83,7 @@ public class UsersController : ControllerBase
         return updated is null ? NotFound() : Ok(updated);
     }
 
-    [Authorize(Roles = "Admin")]
+    //[Authorize(Roles = "Admin")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {

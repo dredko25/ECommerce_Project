@@ -72,7 +72,7 @@ public class UserService : IUserService
         };
     }
 
-    public async Task<AuthResponseDto> LoginAsync(LoginUserDto dto)
+    public async Task<AuthResponseDto?> LoginAsync(LoginUserDto dto)
     {
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Email == dto.Email);
@@ -87,10 +87,13 @@ public class UserService : IUserService
 
         var token = _tokenService.GenerateAccessToken(user);
 
+        var refreshToken = await _tokenService.GenerateAndSaveRefreshTokenAsync(user);
+
         return new AuthResponseDto
         {
             AccessToken = token,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(15),
+            RefreshToken = refreshToken,
+            ExpiresAt = DateTime.UtcNow.AddDays(1),
             User = _mapper.Map<UserResponseDto>(user)
         };
     }
