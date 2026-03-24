@@ -1,5 +1,6 @@
 ﻿using ECommerce_Project.Api.DTOs.User;
 using ECommerce_Project.Api.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ECommerce_Project.Api.Controllers;
@@ -82,6 +83,7 @@ public class UsersController : ControllerBase
         return updated is null ? NotFound() : Ok(updated);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {

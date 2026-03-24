@@ -16,6 +16,10 @@ public class UserEntity
 
     public bool IsAdmin { get; set; } = false;
 
+    public string? RefreshToken { get; set; }
+    
+    public DateTime? RefreshTokenExpiryTime { get; set; }
+
     public Guid? CartId { get; set; }
 
     public CartEntity? Cart { get; set; }
