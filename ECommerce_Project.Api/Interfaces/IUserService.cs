@@ -8,8 +8,10 @@ namespace ECommerce_Project.Api.Interfaces
 
         Task<UserResponseDto?> GetByIdAsync(Guid id);
         
-        Task<UserResponseDto> CreateAsync(CreateUserDto dto);
-        
+        Task<AuthResponseDto> CreateAsync(CreateUserDto dto);
+
+        Task<AuthResponseDto?> LoginAsync(LoginUserDto dto);
+
         Task<UserResponseDto?> UpdateAsync(Guid id, UpdateUserDto dto);
         
         Task<bool> DeleteAsync(Guid id);
