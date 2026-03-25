@@ -1,9 +1,12 @@
 ﻿using ECommerce_Project.Api.DTOs.Cart;
 using ECommerce_Project.Api.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class CartController : ControllerBase
 {
     private readonly ICartService _cartService;
@@ -19,10 +22,9 @@ public class CartController : ControllerBase
         var cart = await _cartService.GetByUserAsync(userId);
         return cart is null ? NotFound() : Ok(cart);
     }
-
+    
     [HttpPost("user/{userId:guid}/items")]
-    public async Task<ActionResult<CartResponseDto>> AddItem(
-        Guid userId, AddToCartDto dto)
+    public async Task<ActionResult<CartResponseDto>> AddItem(Guid userId, [FromBody] AddToCartDto dto)
     {
         var cart = await _cartService.AddItemAsync(userId, dto);
         return Ok(cart);
@@ -36,12 +38,20 @@ public class CartController : ControllerBase
         return cart is null ? NotFound() : Ok(cart);
     }
 
-    [HttpDelete("user/{userId:guid}/items/{cartItemId:guid}")]
-    public async Task<ActionResult<CartResponseDto>> RemoveItem(
-        Guid userId, Guid cartItemId)
+    [HttpDelete("items/{cartItemId:guid}")]
+    public async Task<ActionResult<CartResponseDto>> RemoveItem(Guid cartItemId)
     {
-        var cart = await _cartService.RemoveItemAsync(userId, cartItemId);
-        return cart is null ? NotFound() : Ok(cart);
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
+            return Unauthorized("Користувач не авторизований");
+
+        var result = await _cartService.RemoveItemAsync(userId, cartItemId);
+
+        if (result == null)
+            return NotFound("Товар не знайдено в кошику");
+
+        return Ok(result);
     }
 
     [HttpDelete("user/{userId:guid}")]

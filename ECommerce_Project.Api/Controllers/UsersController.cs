@@ -65,7 +65,7 @@ public class UsersController : ControllerBase
         {
             var result = await _userService.LoginAsync(dto);
 
-            _logger.LogInformation("POST /login — успіх, UserId: {UserId}", result.User.Id);
+            _logger.LogInformation("POST /login — успіх, UserId: {UserId}", result?.User.Id);
 
             return Ok(result);
         }
