@@ -1,6 +1,7 @@
 ﻿using ECommerce_Project.Api.DTOs.Product;
 using ECommerce_Project.Api.Helpers;
 using ECommerce_Project.Api.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
@@ -43,6 +44,7 @@ public class ProductsController : ControllerBase
         return updated is null ? NotFound() : Ok(updated);
     }
 
+    [Authorize]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
