@@ -16,14 +16,14 @@ public class CartService : ICartService
         _mapper = mapper;
     }
 
-    private IQueryable<CartEntity> CartWithItems =>
+    private IQueryable<CartEntity> GetCartWithItems() =>
         _context.Carts
             .Include(c => c.CartItems)
                 .ThenInclude(i => i.Product);
 
     public async Task<CartResponseDto?> GetByUserAsync(Guid userId)
     {
-        var cart = await CartWithItems
+        var cart = await GetCartWithItems()
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.UserId == userId);
 
@@ -32,88 +32,99 @@ public class CartService : ICartService
 
     public async Task<CartResponseDto> AddItemAsync(Guid userId, AddToCartDto dto)
     {
-        var cart = await CartWithItems
+        var cart = await _context.Carts
+            .Include(c => c.CartItems)
             .FirstOrDefaultAsync(c => c.UserId == userId);
 
-        if (cart is null)
+        if (cart == null)
         {
             cart = new CartEntity
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
-                CreatedAt = DateTime.UtcNow,
-                CartItems = []
+                CreatedAt = DateTime.UtcNow
             };
-            await _context.Carts.AddAsync(cart);
+
+            _context.Carts.Add(cart);
+            await _context.SaveChangesAsync();
         }
 
-        var existing = cart.CartItems.FirstOrDefault(i => i.ProductId == dto.ProductId);
-        if (existing is not null)
+        var existingItem = cart.CartItems.FirstOrDefault(i => i.ProductId == dto.ProductId);
+
+        if (existingItem != null)
         {
-            existing.Quantity += dto.Quantity;
+            existingItem.Quantity += dto.Quantity;
         }
         else
         {
-            cart.CartItems.Add(new CartItemEntity
+            var newItem = new CartItemEntity
             {
                 Id = Guid.NewGuid(),
                 CartId = cart.Id,
                 ProductId = dto.ProductId,
                 Quantity = dto.Quantity
-            });
+            };
+
+            _context.CartItems.Add(newItem);
         }
 
         await _context.SaveChangesAsync();
 
-        var updated = await CartWithItems
+        var updatedCart = await GetCartWithItems()
             .AsNoTracking()
             .FirstAsync(c => c.Id == cart.Id);
 
-        return _mapper.Map<CartResponseDto>(updated);
+        return _mapper.Map<CartResponseDto>(updatedCart);
     }
 
-    public async Task<CartResponseDto?> UpdateItemQuantityAsync(
-        Guid userId, Guid cartItemId, int quantity)
+    public async Task<CartResponseDto?> UpdateItemQuantityAsync(Guid userId, Guid cartItemId, int quantity)
     {
-        var cart = await CartWithItems
+        var cart = await _context.Carts
+            .Include(c => c.CartItems)
             .FirstOrDefaultAsync(c => c.UserId == userId);
-        if (cart is null) return null;
+
+        if (cart == null) return null;
 
         var item = cart.CartItems.FirstOrDefault(i => i.Id == cartItemId);
-        if (item is null) return null;
+        if (item == null) return null;
 
         if (quantity <= 0)
-            cart.CartItems.Remove(item);
+        {
+            _context.CartItems.Remove(item);
+        }
         else
+        {
             item.Quantity = quantity;
+        }
 
         await _context.SaveChangesAsync();
 
-        var updated = await CartWithItems
+        var updatedCart = await GetCartWithItems()
             .AsNoTracking()
             .FirstAsync(c => c.Id == cart.Id);
 
-        return _mapper.Map<CartResponseDto>(updated);
+        return _mapper.Map<CartResponseDto>(updatedCart);
     }
 
     public async Task<CartResponseDto?> RemoveItemAsync(Guid userId, Guid cartItemId)
     {
-        var cart = await CartWithItems
+        var cart = await _context.Carts
+            .Include(c => c.CartItems)
             .FirstOrDefaultAsync(c => c.UserId == userId);
-        if (cart is null) return null;
+
+        if (cart == null) return null;
 
         var item = cart.CartItems.FirstOrDefault(i => i.Id == cartItemId);
-        if (item is not null)
-        {
-            cart.CartItems.Remove(item);
-            await _context.SaveChangesAsync();
-        }
+        if (item == null) return null;
 
-        var updated = await CartWithItems
+        _context.CartItems.Remove(item);
+        await _context.SaveChangesAsync();
+
+        var updatedCart = await GetCartWithItems()
             .AsNoTracking()
-            .FirstAsync(c => c.Id == cart.Id);
+            .FirstOrDefaultAsync(c => c.Id == cart.Id);
 
-        return _mapper.Map<CartResponseDto>(updated);
+        return _mapper.Map<CartResponseDto>(updatedCart);
     }
 
     public async Task ClearAsync(Guid userId)
@@ -122,9 +133,9 @@ public class CartService : ICartService
             .Include(c => c.CartItems)
             .FirstOrDefaultAsync(c => c.UserId == userId);
 
-        if (cart is null) return;
+        if (cart == null) return;
 
-        cart.CartItems.Clear();
+        _context.CartItems.RemoveRange(cart.CartItems);
         await _context.SaveChangesAsync();
     }
 }
