@@ -1,9 +1,10 @@
-﻿document.addEventListener('DOMContentLoaded', () => {
+﻿const API_URL = '/api/products';
 
+document.addEventListener('DOMContentLoaded', () => {
     updateNavigation();
 
     if (document.getElementById('catalog-container')) {
-        loadProducts();
+        loadCatalogProducts();
     }
 
     if (document.getElementById('product-details-container')) {
@@ -12,6 +13,10 @@
 
     if (document.getElementById('cart-container')) {
         loadCart();
+    }
+
+    if (document.getElementById('productsTableBody')) {
+        loadAdminProducts();
     }
 });
 

@@ -1,0 +1,46 @@
+﻿@page
+@model ECommerce_Project.Api.Pages.AdminProductsModel
+@{
+}
+<div class="admin-container">
+    <h2>Адмін-панель: Управління товарами</h2>
+    <div id="admin-auth-error" style="color: red; display: none; margin-bottom: 15px;">
+        Помилка доступу. Цей розділ доступний лише для адміністраторів.
+    </div>
+
+    <div class="add-product-section" style="margin-bottom: 30px; padding: 15px; border: 1px solid #ccc;">
+        <h3>Додати новий товар</h3>
+        <form id="addProductForm">
+            <input type="text" id="addName" placeholder="Назва товару" required />
+            <input type="text" id="addDesc" placeholder="Опис" required />
+            <input type="number" id="addPrice" placeholder="Ціна" step="0.01" required />
+            <input type="number" id="addQty" placeholder="Кількість" required />
+            <input type="text" id="addCategory" placeholder="ID Категорії (Guid)" required />
+            <button type="submit">Додати</button>
+        </form>
+    </div>
+
+    <table border="1" style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr>
+                <th>Назва</th>
+                <th>Опис</th>
+                <th>Ціна</th>
+                <th>Дії</th>
+            </tr>
+        </thead>
+        <tbody id="productsTableBody">
+        </tbody>
+    </table>
+</div>
+
+<div id="editProductModal" style="display: none; position: fixed; top: 20%; left: 30%; background: white; padding: 20px; border: 2px solid black; z-index: 1000;">
+    <h3>Редагувати товар</h3>
+    <input type="hidden" id="editProductId" />
+    <label>Опис:</label><br>
+    <textarea id="editDesc" rows="3" cols="30"></textarea><br><br>
+    <label>Ціна:</label><br>
+    <input type="number" id="editPrice" step="0.01" /><br><br>
+    <button onclick="saveChanges()">Зберегти</button>
+    <button onclick="closeEditModal()">Скасувати</button>
+</div>
