@@ -1,0 +1,16 @@
+﻿@page
+<div class="container mt-5" style="max-width: 400px;">
+    <h2 class="text-center mb-4">Вхід</h2>
+    <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" id="loginEmail" class="form-control" required>
+        </div>
+        <div class="mb-4">
+            <label class="form-label">Пароль</label>
+            <input type="password" id="loginPassword" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-dark w-100 rounded-0">УВІЙТИ</button>
+        <p class="text-center mt-3"><a href="/Register" class="text-muted">Ще не зареєстровані?</a></p>
+    </form>
+</div>

@@ -21,10 +21,22 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Index">Home</a>
+                            <a class="nav-link d-none" id="nav-admin" href="/AdminProducts">Адмін-панель</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Privacy">Privacy</a>
+                            <a class="nav-link text-dark" href="/">Каталог</a>
+                        </li>
+                        <li class="nav-item" id="nav-login">
+                            <a class="nav-link text-dark" href="/Login">Увійти</a>
+                        </li>
+                        <li class="nav-item" id="nav-register">
+                            <a class="nav-link text-dark" href="/Register">Реєстрація</a>
+                        </li>
+                        <li class="nav-item d-none" id="nav-cart">
+                            <a class="nav-link text-dark font-weight-bold" href="/Cart">Кошик</a>
+                        </li>
+                        <li class="nav-item d-none" id="nav-logout">
+                            <a class="nav-link text-danger" href="#" onclick="handleLogout()">Вийти</a>
                         </li>
                     </ul>
                 </div>
