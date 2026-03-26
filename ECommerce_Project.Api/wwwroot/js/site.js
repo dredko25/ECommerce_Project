@@ -16,10 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('cart-container')) {
         loadCart();
     }
-
-    if (document.getElementById('productsTableBody')) {
-        loadAdminProducts();
-    }
 });
 
 function getUserRole() {
@@ -252,7 +248,6 @@ window.addToCart = async function (productId) {
         });
 
         if (!response.ok) throw new Error('Не вдалося додати товар');
-        alert('Товар додано в кошик!');
         if (document.getElementById('cart-container')) loadCart();
 
     } catch (error) {
