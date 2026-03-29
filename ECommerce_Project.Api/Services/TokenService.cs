@@ -20,6 +20,16 @@ namespace ECommerce_Project.Api.Services
             _context = context;
         }
 
+        /// <summary>
+        /// Generates a JSON Web Token (JWT) access token containing user identity and role claims.
+        /// </summary>
+        /// <remarks>The generated token includes claims for the user's identifier, email, first name,
+        /// last name, and role. The token is valid for one day from the time of generation. Ensure that the application
+        /// configuration contains valid JWT settings for key, issuer, and audience.</remarks>
+        /// <param name="user">The user entity for which to generate the access token. Must not be null and must contain valid user
+        /// information.</param>
+        /// <returns>A JWT access token as a string, representing the authenticated user's identity and role claims.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the JWT signing key is not configured in the application settings.</exception>
         public string GenerateAccessToken(UserEntity user)
         {
             var claims = new List<Claim>
@@ -47,6 +57,13 @@ namespace ECommerce_Project.Api.Services
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
+
+        /// <summary>
+        /// Generates a cryptographically secure random refresh token encoded as a Base64 string.
+        /// </summary>
+        /// <remarks>The generated token is suitable for use in authentication scenarios where a unique,
+        /// unpredictable value is required, such as issuing refresh tokens for user sessions.</remarks>
+        /// <returns>A Base64-encoded string representing a securely generated refresh token.</returns>
         private string GenerateRefreshToken()
         {
             var randomNumber = new byte[32];
@@ -55,6 +72,14 @@ namespace ECommerce_Project.Api.Services
             return Convert.ToBase64String(randomNumber);
         }
 
+        /// <summary>
+        /// Generates a new refresh token for the specified user and saves it to the data store asynchronously.
+        /// </summary>
+        /// <remarks>The refresh token is valid for seven days from the time of generation. This method
+        /// updates the user's refresh token and its expiry time in the data store.</remarks>
+        /// <param name="user">The user entity for which to generate and persist the refresh token. Cannot be null.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains the newly generated refresh
+        /// token as a string.</returns>
         public async Task<string> GenerateAndSaveRefreshTokenAsync(UserEntity user)
         {
             var refreshToken = GenerateRefreshToken();

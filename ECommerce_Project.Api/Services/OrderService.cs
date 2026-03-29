@@ -16,6 +16,13 @@ public class OrderService : IOrderService
         _mapper = mapper;
     }
 
+    /// <summary>
+    /// Asynchronously retrieves all orders, including their associated order items, and returns them as a list of order
+    /// summary data transfer objects.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a list of <see
+    /// cref="OrderSummaryDto"/> objects representing all orders, ordered by descending order date. The list is empty if
+    /// no orders are found.</returns>
     public async Task<List<OrderSummaryDto>> GetAllAsync()
     {
         var orders = await _context.Orders
@@ -27,6 +34,12 @@ public class OrderService : IOrderService
         return _mapper.Map<List<OrderSummaryDto>>(orders);
     }
 
+    /// <summary>
+    /// Asynchronously retrieves a list of order summaries for the specified user, ordered by most recent order date.
+    /// </summary>
+    /// <param name="userId">The unique identifier of the user whose orders are to be retrieved.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a list of order summary data
+    /// transfer objects for the specified user. The list is empty if the user has no orders.</returns>
     public async Task<List<OrderSummaryDto>> GetByUserAsync(Guid userId)
     {
         var orders = await _context.Orders
@@ -39,6 +52,12 @@ public class OrderService : IOrderService
         return _mapper.Map<List<OrderSummaryDto>>(orders);
     }
 
+    /// <summary>
+    /// Asynchronously retrieves an order by its unique identifier.
+    /// </summary>
+    /// <param name="id">The unique identifier of the order to retrieve.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains an <see cref="OrderResponseDto"/>
+    /// representing the order if found; otherwise, <see langword="null"/>.</returns>
     public async Task<OrderResponseDto?> GetByIdAsync(Guid id)
     {
         var order = await _context.Orders
@@ -51,6 +70,14 @@ public class OrderService : IOrderService
         return _mapper.Map<OrderResponseDto?>(order);
     }
 
+    /// <summary>
+    /// Creates a new order for the specified user using the provided order details.
+    /// </summary>
+    /// <param name="userId">The unique identifier of the user for whom the order is being created.</param>
+    /// <param name="dto">An object containing the details of the order to create, including items and quantities. Cannot be null.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains an OrderResponseDto with the details
+    /// of the newly created order.</returns>
+    /// <exception cref="Exception">Thrown if the order cannot be retrieved after creation.</exception>
     public async Task<OrderResponseDto> CreateAsync(Guid userId, CreateOrderDto dto)
     {
         var order = _mapper.Map<OrderEntity>(dto);
@@ -88,6 +115,14 @@ public class OrderService : IOrderService
             ?? throw new Exception("Order not found after create");
     }
 
+    /// <summary>
+    /// Updates the status of the specified order asynchronously.
+    /// </summary>
+    /// <param name="id">The unique identifier of the order to update.</param>
+    /// <param name="status">The new status to assign to the order. Must be a valid value of the OrderStatus enumeration.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains an OrderResponseDto representing the
+    /// updated order, or null if the order does not exist.</returns>
+    /// <exception cref="ArgumentException">Thrown if the status parameter does not correspond to a valid OrderStatus value.</exception>
     public async Task<OrderResponseDto?> UpdateStatusAsync(Guid id, string status)
     {
         var order = await _context.Orders.FindAsync(id);
@@ -102,6 +137,12 @@ public class OrderService : IOrderService
         return await GetByIdAsync(id);
     }
 
+    /// <summary>
+    /// Asynchronously deletes the order with the specified identifier, if it exists.
+    /// </summary>
+    /// <param name="id">The unique identifier of the order to delete.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result is <see langword="true"/> if the order was
+    /// found and deleted; otherwise, <see langword="false"/>.</returns>
     public async Task<bool> DeleteAsync(Guid id)
     {
         var order = await _context.Orders.FindAsync(id);

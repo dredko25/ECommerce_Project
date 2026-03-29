@@ -18,6 +18,13 @@ namespace ECommerce_Project.Api.Services
             _mapper = mapper;
         }
 
+        /// <summary>
+        /// Creates a new category using the specified data transfer object and returns the created category.
+        /// </summary>
+        /// <param name="dto">The data transfer object containing the information required to create a new category. Cannot be null.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a data transfer object
+        /// representing the newly created category.</returns>
+        /// <exception cref="Exception">Thrown if the category cannot be retrieved after creation.</exception>
         public async Task<CategoryResponseDto> CreateAsync(CreateCategoryDto dto)
         {
             var category = _mapper.Map<CategoryEntity>(dto);
@@ -30,6 +37,12 @@ namespace ECommerce_Project.Api.Services
                 ?? throw new Exception("Category not found after create");
         }
 
+        /// <summary>
+        /// Asynchronously deletes the category with the specified identifier, if it exists.
+        /// </summary>
+        /// <param name="id">The unique identifier of the category to delete.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result is <see langword="true"/> if the category
+        /// was found and deleted; otherwise, <see langword="false"/>.</returns>
         public async Task<bool> DeleteAsync(Guid id)
         {
             var category = await _context.Categories.FindAsync(id);
@@ -40,6 +53,11 @@ namespace ECommerce_Project.Api.Services
             return true;
         }
 
+        /// <summary>
+        /// Asynchronously retrieves all categories along with their associated products.
+        /// </summary>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a list of category data transfer
+        /// objects, each including its related products. The list is empty if no categories are found.</returns>
         public async Task<List<CategoryResponseDto>> GetAllAsync()
         {
             var categories = await _context.Categories
@@ -50,6 +68,12 @@ namespace ECommerce_Project.Api.Services
             return _mapper.Map<List<CategoryResponseDto>>(categories);
         }
 
+        /// <summary>
+        /// Asynchronously retrieves a category by its unique identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier of the category to retrieve.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a <see
+        /// cref="CategoryResponseDto"/> representing the category if found; otherwise, <see langword="null"/>.</returns>
         public async Task<CategoryResponseDto?> GetByIdAsync(Guid id)
         {
             var category = await _context.Categories
@@ -60,6 +84,14 @@ namespace ECommerce_Project.Api.Services
             return _mapper.Map<CategoryResponseDto?>(category);
         }
 
+        /// <summary>
+        /// Updates the specified category with new values provided in the update data transfer object.
+        /// </summary>
+        /// <param name="id">The unique identifier of the category to update.</param>
+        /// <param name="dto">An object containing the updated values for the category. Only non-null properties will be applied.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains a <see
+        /// cref="CategoryResponseDto"/> with the updated category data if the category exists; otherwise, <see
+        /// langword="null"/>.</returns>
         public async Task<CategoryResponseDto?> UpdateAsync(Guid id, UpdateCategoryDto dto)
         {
             var category = await _context.Categories.FindAsync(id);
