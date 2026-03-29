@@ -17,6 +17,16 @@ public class ProductService : IProductService
         _mapper = mapper;
     }
 
+    /// <summary>
+    /// Retrieves a paged list of products that match the specified filtering and search criteria.
+    /// </summary>
+    /// <remarks>The method applies filtering by category and search term if provided. Results are paged
+    /// according to the specified page number and page size. The returned items are mapped to summary DTOs and do not
+    /// include full product details.</remarks>
+    /// <param name="productParams">The parameters used to filter, search, and paginate the product results. Must specify valid page number and page
+    /// size values.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a paged response with product
+    /// summary data matching the specified criteria. The response includes the total item count and paging information.</returns>
     public async Task<PagedResponse<ProductSummaryDto>> GetProductsAsync(ProductParams productParams)
     {
         var query = _context.Products
@@ -51,6 +61,14 @@ public class ProductService : IProductService
         };
     }
 
+    /// <summary>
+    /// Asynchronously retrieves a product by its unique identifier.
+    /// </summary>
+    /// <remarks>The returned product includes its associated category information. The operation does not
+    /// track changes to the retrieved entity.</remarks>
+    /// <param name="id">The unique identifier of the product to retrieve.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a <see cref="ProductResponseDto"/>
+    /// representing the product if found; otherwise, <see langword="null"/>.</returns>
     public async Task<ProductResponseDto?> GetByIdAsync(Guid id)
     {
         var product = await _context.Products
@@ -61,6 +79,13 @@ public class ProductService : IProductService
         return product is null ? null : _mapper.Map<ProductResponseDto>(product);
     }
 
+    /// <summary>
+    /// Creates a new product using the specified data transfer object and returns the created product.
+    /// </summary>
+    /// <param name="dto">The data transfer object containing the information required to create a new product. Cannot be null.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a data transfer object representing
+    /// the newly created product.</returns>
+    /// <exception cref="Exception">Thrown if the product cannot be retrieved after creation.</exception>
     public async Task<ProductResponseDto> CreateAsync(CreateProductDto dto)
     {
         var product = _mapper.Map<ProductEntity>(dto);
@@ -73,6 +98,13 @@ public class ProductService : IProductService
             ?? throw new Exception("Product not found after create");
     }
 
+    /// <summary>
+    /// Updates an existing product with the specified values and returns the updated product details.
+    /// </summary>
+    /// <param name="id">The unique identifier of the product to update.</param>
+    /// <param name="dto">An object containing the updated values for the product. Only non-null fields will be applied.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a <see cref="ProductResponseDto"/>
+    /// with the updated product details, or <see langword="null"/> if the product does not exist.</returns>
     public async Task<ProductResponseDto?> UpdateAsync(Guid id, UpdateProductDto dto)
     {
         var product = await _context.Products.FindAsync(id);
@@ -89,6 +121,12 @@ public class ProductService : IProductService
         return await GetByIdAsync(id);
     }
 
+    /// <summary>
+    /// Asynchronously deletes the product with the specified identifier from the data store.
+    /// </summary>
+    /// <param name="id">The unique identifier of the product to delete.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result is <see langword="true"/> if the product was
+    /// found and deleted; otherwise, <see langword="false"/>.</returns>
     public async Task<bool> DeleteAsync(Guid id)
     {
         var product = await _context.Products.FindAsync(id);
