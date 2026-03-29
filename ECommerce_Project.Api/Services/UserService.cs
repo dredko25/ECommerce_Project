@@ -24,6 +24,12 @@ public class UserService : IUserService
         _tokenService = tokenService;
     }
 
+
+    /// <summary>
+    /// Asynchronously retrieves all users from the data store and maps them to response DTOs.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a list of user response DTOs. The
+    /// list is empty if no users are found.</returns>
     public async Task<List<UserResponseDto>> GetAllAsync()
     {
         var users = await _context.Users
@@ -33,6 +39,12 @@ public class UserService : IUserService
         return _mapper.Map<List<UserResponseDto>>(users);
     }
 
+    /// <summary>
+    /// Asynchronously retrieves a user by unique identifier and returns the user data as a response DTO.
+    /// </summary>
+    /// <param name="id">The unique identifier of the user to retrieve.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a <see cref="UserResponseDto"/> with 
+    /// the user's data if found; otherwise, <see langword="null"/>.</returns>
     public async Task<UserResponseDto?> GetByIdAsync(Guid id)
     {
         var user = await _context.Users
@@ -42,6 +54,12 @@ public class UserService : IUserService
         return user is null ? null : _mapper.Map<UserResponseDto>(user);
     }
 
+    /// <summary>
+    /// Creates a new user account and returns an authentication response containing an access token and user information.
+    /// </summary>
+    /// <param name="dto">The data transfer object containing the information required to create a new user, including email and password.</param>
+    /// <returns>An authentication response containing the access token, its expiration time, and the created user's information.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if a user with the specified email address already exists.</exception>
     public async Task<AuthResponseDto> CreateAsync(CreateUserDto dto)
     {
         var emailExists = await _context.Users
@@ -72,6 +90,13 @@ public class UserService : IUserService
         };
     }
 
+    /// <summary>
+    /// Authenticates a user with the provided credentials and generates authentication tokens.
+    /// </summary>
+    /// <param name="dto">An object containing the user's login credentials, including email and password.</param>
+    /// <returns>An <see cref="AuthResponseDto"/> containing the access token, refresh token, expiration time, and user
+    /// information if authentication is successful; otherwise, <see langword="null"/>.</returns>
+    /// <exception cref="UnauthorizedAccessException">Thrown if the email or password is incorrect.</exception>
     public async Task<AuthResponseDto?> LoginAsync(LoginUserDto dto)
     {
         var user = await _context.Users
@@ -98,6 +123,13 @@ public class UserService : IUserService
         };
     }
 
+    /// <summary>
+    /// Updates the user with the specified identifier using the provided update data asynchronously.
+    /// </summary>
+    /// <param name="id">The unique identifier of the user to update.</param>
+    /// <param name="dto">An object containing the updated user information. Only non-null properties will be applied.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a UserResponseDto with the updated
+    /// user information, or null if the user is not found.</returns>
     public async Task<UserResponseDto?> UpdateAsync(Guid id, UpdateUserDto dto)
     {
         var user = await _context.Users.FindAsync(id);
@@ -111,6 +143,12 @@ public class UserService : IUserService
         return _mapper.Map<UserResponseDto>(user);
     }
 
+    /// <summary>
+    /// Asynchronously deletes the user with the specified unique identifier from the data store.
+    /// </summary>
+    /// <param name="id">The unique identifier of the user to delete.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result is <see langword="true"/> if the user was
+    /// found and deleted; otherwise, <see langword="false"/>.</returns>
     public async Task<bool> DeleteAsync(Guid id)
     {
         var user = await _context.Users.FindAsync(id);

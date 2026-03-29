@@ -16,11 +16,24 @@ public class CartService : ICartService
         _mapper = mapper;
     }
 
+    /// <summary>
+    /// Retrieves a queryable collection of carts, including their associated cart items and products.
+    /// </summary>
+    /// <remarks>The returned query enables further composition with additional LINQ operations before
+    /// execution. The related cart items and products are eagerly loaded to avoid additional database queries when
+    /// accessing these navigation properties.</remarks>
+    /// <returns>An <see cref="IQueryable{CartEntity}"/> that includes each cart's items and the corresponding products.</returns>
     private IQueryable<CartEntity> GetCartWithItems() =>
         _context.Carts
             .Include(c => c.CartItems)
                 .ThenInclude(i => i.Product);
 
+    /// <summary>
+    /// Retrieves the shopping cart and its items for the specified user asynchronously.
+    /// </summary>
+    /// <param name="userId">The unique identifier of the user whose cart is to be retrieved.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a <see cref="CartResponseDto"/>
+    /// representing the user's cart and its items, or <see langword="null"/> if no cart exists for the specified user.</returns>
     public async Task<CartResponseDto?> GetByUserAsync(Guid userId)
     {
         var cart = await GetCartWithItems()
@@ -30,6 +43,16 @@ public class CartService : ICartService
         return _mapper.Map<CartResponseDto?>(cart);
     }
 
+    /// <summary>
+    /// Adds an item to the user's shopping cart asynchronously, creating a new cart if one does not exist.
+    /// </summary>
+    /// <remarks>If the specified product already exists in the cart, its quantity is increased by the
+    /// specified amount. Otherwise, a new item is added to the cart. If the user does not have an existing cart, a new
+    /// cart is created.</remarks>
+    /// <param name="userId">The unique identifier of the user whose cart will be updated.</param>
+    /// <param name="dto">An object containing the product identifier and quantity to add to the cart. Cannot be null.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a data transfer object representing
+    /// the updated state of the user's cart.</returns>
     public async Task<CartResponseDto> AddItemAsync(Guid userId, AddToCartDto dto)
     {
         var cart = await _context.Carts
@@ -77,6 +100,14 @@ public class CartService : ICartService
         return _mapper.Map<CartResponseDto>(updatedCart);
     }
 
+    /// <summary>
+    /// Updates the quantity of a specific item in the user's shopping cart.
+    /// </summary>
+    /// <param name="userId">The unique identifier of the user whose cart is being updated.</param>
+    /// <param name="cartItemId">The unique identifier of the cart item to update.</param>
+    /// <param name="quantity">The new quantity for the cart item. If less than or equal to zero, the item is removed from the cart.</param>
+    /// <returns>A <see cref="CartResponseDto"/> representing the updated cart, or <see langword="null"/> if the cart or item
+    /// does not exist.</returns>
     public async Task<CartResponseDto?> UpdateItemQuantityAsync(Guid userId, Guid cartItemId, int quantity)
     {
         var cart = await _context.Carts
@@ -106,6 +137,15 @@ public class CartService : ICartService
         return _mapper.Map<CartResponseDto>(updatedCart);
     }
 
+    /// <summary>
+    /// Removes a specific item from the user's shopping cart asynchronously and returns the updated cart information.
+    /// </summary>
+    /// <remarks>Returns <see langword="null"/> if the specified cart or cart item does not exist for the
+    /// given user.</remarks>
+    /// <param name="userId">The unique identifier of the user whose cart is being modified.</param>
+    /// <param name="cartItemId">The unique identifier of the cart item to remove from the user's cart.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a <see cref="CartResponseDto"/> with
+    /// the updated cart information if the cart and item exist; otherwise, <see langword="null"/>.</returns>
     public async Task<CartResponseDto?> RemoveItemAsync(Guid userId, Guid cartItemId)
     {
         var cart = await _context.Carts
@@ -127,6 +167,13 @@ public class CartService : ICartService
         return _mapper.Map<CartResponseDto>(updatedCart);
     }
 
+    /// <summary>
+    /// Asynchronously removes all items from the shopping cart associated with the specified user.
+    /// </summary>
+    /// <remarks>If the user does not have an existing cart, the method completes without performing any
+    /// action.</remarks>
+    /// <param name="userId">The unique identifier of the user whose cart will be cleared.</param>
+    /// <returns>A task that represents the asynchronous clear operation.</returns>
     public async Task ClearAsync(Guid userId)
     {
         var cart = await _context.Carts

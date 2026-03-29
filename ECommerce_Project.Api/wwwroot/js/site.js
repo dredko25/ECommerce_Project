@@ -408,3 +408,130 @@ window.removeFromCart = async function (cartItemId) {
         alert('Помилка з\'єднання з сервером.');
     }
 };
+
+async function loadAdminProducts() {
+    try {
+        const response = await fetch(`${API_URL}?pageNumber=1&pageSize=100`, {
+            method: 'GET',
+            headers: getAuthHeaders()
+        });
+
+        if (response.status === 401 || response.status === 403) {
+            document.getElementById('admin-auth-error').style.display = 'block';
+            return;
+        }
+
+        if (!response.ok) throw new Error('Помилка завантаження товарів');
+
+        const data = await response.json();
+        renderAdminProductsTable(data.items);
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+function renderAdminProductsTable(products) {
+    const tbody = document.getElementById('productsTableBody');
+    tbody.innerHTML = '';
+
+    products.forEach(product => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${product.name}</td>
+            <td>${product.description || '-'}</td>
+            <td>${product.price}</td>
+            <td>
+                <button onclick="openEditModal('${product.id}', '${product.description || ''}', ${product.price})">Редагувати</button>
+                <button onclick="deleteProduct('${product.id}')">Видалити</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+if (document.getElementById('addProductForm')) {
+    document.getElementById('addProductForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const newProduct = {
+            name: document.getElementById('addName').value,
+            description: document.getElementById('addDesc').value,
+            price: parseFloat(document.getElementById('addPrice').value),
+            quantityAvailable: parseInt(document.getElementById('addQty').value),
+            categoryId: document.getElementById('addCategory').value
+        };
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(newProduct)
+            });
+
+            if (response.ok) {
+                alert('Товар успішно додано!');
+                this.reset();
+                loadAdminProducts();
+            } else {
+                alert('Помилка при додаванні товару');
+            }
+        } catch (error) {
+            console.error('Помилка:', error);
+        }
+    });
+}
+
+window.deleteProduct = async function (id) {
+    if (!confirm('Ви впевнені, що хочете видалити цей товар?')) return;
+
+    try {
+        const response = await fetch(`${API_URL}/${id}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
+
+        if (response.ok) {
+            loadAdminProducts();
+        } else {
+            alert('Помилка при видаленні');
+        }
+    } catch (error) {
+        console.error('Помилка:', error);
+    }
+}
+
+window.openEditModal = function (id, currentDesc, currentPrice) {
+    document.getElementById('editProductId').value = id;
+    document.getElementById('editDesc').value = currentDesc;
+    document.getElementById('editPrice').value = currentPrice;
+    document.getElementById('editProductModal').style.display = 'block';
+}
+
+window.closeEditModal = function () {
+    document.getElementById('editProductModal').style.display = 'none';
+}
+
+window.saveChanges = async function () {
+    const id = document.getElementById('editProductId').value;
+    const updateDto = {
+        description: document.getElementById('editDesc').value,
+        price: parseFloat(document.getElementById('editPrice').value)
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/${id}`, {
+            method: 'PATCH',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(updateDto)
+        });
+
+        if (response.ok) {
+            closeEditModal();
+            loadAdminProducts();
+        } else {
+            alert('Помилка при оновленні товару');
+        }
+    } catch (error) {
+        console.error('Помилка:', error);
+    }
+}

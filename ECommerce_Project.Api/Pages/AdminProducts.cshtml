@@ -186,12 +186,20 @@
     <script>
         let editModal;
 
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!isAdmin()) {
+                document.getElementById('admin-auth-error').classList.remove('d-none');
+
+                document.querySelector('.form-section').style.display = 'none';
+                document.querySelector('.table-responsive').style.display = 'none';
+                return;
+            }
+
             editModal = new bootstrap.Modal(document.getElementById('editProductModal'));
             loadCategories();
             loadProducts(1);
-            
-            document.getElementById('addProductForm').addEventListener('submit', function(e) {
+
+            document.getElementById('addProductForm').addEventListener('submit', function (e) {
                 e.preventDefault();
                 addProduct();
             });
@@ -202,6 +210,17 @@
         let currentPage = 1;
         let pageSize = 10;
         let totalPages = 1;
+
+        function isAdmin() {
+            if (!token) return false;
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                const role = payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || payload.role;
+                return role === 'Admin';
+            } catch (e) {
+                return false;
+            }
+        }
 
         function loadProducts(page = 1) {
             currentPage = page;
