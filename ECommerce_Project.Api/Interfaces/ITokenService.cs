@@ -8,5 +8,6 @@ namespace ECommerce_Project.Api.Interfaces
 
         Task<string> GenerateAndSaveRefreshTokenAsync(UserEntity user);
 
+        Task<UserEntity?> ValidateRefreshTokenAsync(Guid userId, string refreshToken);
     }
 }
