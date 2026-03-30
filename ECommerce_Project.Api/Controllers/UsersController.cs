@@ -2,6 +2,7 @@
 using ECommerce_Project.Api.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace ECommerce_Project.Api.Controllers;
 
@@ -98,6 +99,27 @@ public class UsersController : ControllerBase
             _logger.LogWarning("POST /refresh-token — невдача для UserId: {UserId}", dto.UserId);
             return Unauthorized(new { message = ex.Message });
         }
+    }
+
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
+        {
+            return Unauthorized(new { message = "Недійсний токен" });
+        }
+
+        var success = await _userService.LogoutAsync(userId);
+
+        if (!success)
+        {
+            return BadRequest(new { message = "Не вдалося виконати вихід" });
+        }
+
+        return Ok(new { message = "Ви успішно вийшли з системи" });
     }
 
     [HttpPatch("{id:guid}")]

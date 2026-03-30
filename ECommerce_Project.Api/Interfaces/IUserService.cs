@@ -14,6 +14,8 @@ namespace ECommerce_Project.Api.Interfaces
 
         Task<AuthResponseDto?> RefreshTokensAsync(RefreshTokenRequestDto dto);
 
+        Task<bool> LogoutAsync(Guid userId);
+
         Task<UserResponseDto?> UpdateAsync(Guid id, UpdateUserDto dto);
         
         Task<bool> DeleteAsync(Guid id);

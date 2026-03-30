@@ -33,13 +33,13 @@ namespace ECommerce_Project.Api.Services
         public string GenerateAccessToken(UserEntity user)
         {
             var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.GivenName, user.FirstName),
-            new Claim(ClaimTypes.Surname, user.LastName),
-            new Claim(ClaimTypes.Role, user.IsAdmin ? "Admin" : "Customer")
-        };
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.GivenName, user.FirstName),
+                new Claim(ClaimTypes.Surname, user.LastName),
+                new Claim(ClaimTypes.Role, user.IsAdmin ? "Admin" : "Customer")
+            };
 
             var key = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]
@@ -58,6 +58,15 @@ namespace ECommerce_Project.Api.Services
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
+        /// <summary>
+        /// Validates the specified refresh token for the given user and returns the user entity if the token is valid.
+        /// </summary>
+        /// <remarks>The method checks that the user exists, the provided refresh token matches the stored
+        /// token, and the token has not expired. If any of these conditions are not met, the method returns
+        /// null.</remarks>
+        /// <param name="userId">The unique identifier of the user whose refresh token is to be validated.</param>
+        /// <param name="refreshToken">The refresh token to validate against the user's stored token.</param>
+        /// <returns>A user entity if the refresh token is valid and has not expired; otherwise, null.</returns>
         public async Task<UserEntity?> ValidateRefreshTokenAsync(Guid userId, string refreshToken)
         {
             var user = await _context.Users

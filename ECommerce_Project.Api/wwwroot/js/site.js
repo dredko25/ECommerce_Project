@@ -205,10 +205,28 @@ async function handleRegister(event) {
     }
 }
 
-window.handleLogout = function () {
+window.handleLogout = async function () {
+    const token = localStorage.getItem('token');
+
+    if (token) {
+        try {
+            await fetch('/api/users/logout', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            console.log("Сервер успішно знищив рефреш-токен");
+        } catch (error) {
+            console.error("Помилка при логауті на сервері:", error);
+        }
+    }
+
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('userId');
+
     updateNavigation();
     window.location.href = '/';
 }
