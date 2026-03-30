@@ -51,11 +51,22 @@ namespace ECommerce_Project.Api.Services
                 issuer: _configuration["Jwt:Issuer"],
                 audience: _configuration["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddDays(1),
+                expires: DateTime.UtcNow.AddMinutes(15),
                 signingCredentials: creds
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        public async Task<UserEntity?> ValidateRefreshTokenAsync(Guid userId, string refreshToken)
+        {
+            var user = await _context.Users
+                .FindAsync(userId);
+            if (user == null || user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+            {
+                return null;
+            }
+            return user;
         }
 
         /// <summary>

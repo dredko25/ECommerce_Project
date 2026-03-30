@@ -118,7 +118,7 @@ public class UserService : IUserService
         {
             AccessToken = token,
             RefreshToken = refreshToken,
-            ExpiresAt = DateTime.UtcNow.AddDays(1),
+            ExpiresAt = DateTime.UtcNow.AddMinutes(15),
             User = _mapper.Map<UserResponseDto>(user)
         };
     }
@@ -157,5 +157,25 @@ public class UserService : IUserService
         _context.Users.Remove(user);
         await _context.SaveChangesAsync();
         return true;
+    }
+
+    public async Task<AuthResponseDto?> RefreshTokensAsync(RefreshTokenRequestDto dto)
+    {
+        var user = await _tokenService.ValidateRefreshTokenAsync(dto.UserId, dto.RefreshToken);
+        if (user is null)
+        {
+            _logger.LogWarning("Невалідний refresh token для UserId: {UserId}", dto.UserId);
+            return null;
+        }
+        var newAccessToken = _tokenService.GenerateAccessToken(user);
+        var newRefreshToken = await _tokenService.GenerateAndSaveRefreshTokenAsync(user);
+
+        return new AuthResponseDto
+        {
+            AccessToken = newAccessToken,
+            RefreshToken = newRefreshToken,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(15),
+            User = _mapper.Map<UserResponseDto>(user)
+        };
     }
 }

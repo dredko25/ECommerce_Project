@@ -105,22 +105,76 @@ async function handleLogin(event) {
 
         const data = await response.json();
         const exactToken = data.accessToken;
+        const exactRefreshToken = data.refreshToken;
 
         let exactUserId = null;
         if (data.user && data.user.id) exactUserId = data.user.id;
 
         if (!exactUserId) {
-            alert("Бекенд не повернув ID! Відкрийте консоль (F12).");
+            alert("Бекенд не повернув ID!");
             return;
         }
 
         localStorage.setItem('token', exactToken);
+        localStorage.setItem('refreshToken', exactRefreshToken);
         localStorage.setItem('userId', exactUserId);
 
         window.location.href = '/';
     } catch (error) {
         alert(error.message);
     }
+}
+
+async function attemptRefreshToken() {
+    const userId = localStorage.getItem('userId');
+    const refreshToken = localStorage.getItem('refreshToken');
+
+    if (!userId || !refreshToken) return false;
+
+    try {
+        const response = await fetchWithAuth('/api/users/refresh-token', {
+            method: 'POST',
+            body: JSON.stringify({ userId: userId, refreshToken: refreshToken })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            localStorage.setItem('token', data.accessToken);
+            localStorage.setItem('refreshToken', data.refreshToken);
+            return true;
+        }
+    } catch (error) {
+        console.error("Помилка при спробі оновити токен:", error);
+    }
+
+    return false;
+}
+
+async function fetchWithAuth(url, options = {}) {
+    options.headers = {
+        ...options.headers,
+        ...getAuthHeaders()
+    };
+
+    let response = await fetch(url, options);
+
+    if (response.status === 401) {
+        console.warn("Токен протермінований.");
+
+        const isRefreshed = await attemptRefreshToken();
+
+        if (isRefreshed) {
+            console.log("Оновлення успішне. Повторюємо оригінальний запит.");
+            options.headers['Authorization'] = `Bearer ${localStorage.getItem('token')}`;
+            response = await fetch(url, options);
+        } else {
+            console.error("Сесія закінчена.");
+            window.handleLogout();
+            throw new Error('Ваша сесія закінчилась. Будь ласка, увійдіть знову.');
+        }
+    }
+
+    return response;
 }
 
 async function handleRegister(event) {
@@ -153,6 +207,7 @@ async function handleRegister(event) {
 
 window.handleLogout = function () {
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('userId');
     updateNavigation();
     window.location.href = '/';
@@ -241,9 +296,8 @@ window.addToCart = async function (productId) {
     }
 
     try {
-        const response = await fetch(`/api/cart/user/${userId}/items`, {
+        const response = await fetchWithAuth(`/api/cart/user/${userId}/items`, {
             method: 'POST',
-            headers: getAuthHeaders(),
             body: JSON.stringify({ productId: productId, quantity: 1 })
         });
 
@@ -267,11 +321,7 @@ async function loadCart() {
 
     try {
 
-        const response = await fetch(`/api/cart/user/${userId}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+        const response = await fetchWithAuth(`/api/cart/user/${userId}`);
 
         if (response.status === 404) {
             renderEmptyCart(container);
@@ -375,12 +425,8 @@ window.removeFromCart = async function (cartItemId) {
     try {
         console.log(`Видаляємо cartItemId: ${cartItemId}`);
 
-        const response = await fetch(`/api/cart/items/${cartItemId}`, {
-            method: 'DELETE',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
+        const response = await fetchWithAuth(`/api/cart/items/${cartItemId}`, {
+            method: 'DELETE'
         });
 
         console.log("Статус видалення:", response.status);
@@ -388,11 +434,6 @@ window.removeFromCart = async function (cartItemId) {
         if (response.ok) {
             console.log("Товар успішно видалено");
             loadCart();
-        }
-        else if (response.status === 401) {
-            alert('Сесія закінчилася. Увійдіть знову.');
-            localStorage.clear();
-            window.location.href = '/Login';
         }
         else if (response.status === 404) {
             alert('Товар вже видалено або не знайдено в кошику.');
@@ -411,9 +452,8 @@ window.removeFromCart = async function (cartItemId) {
 
 async function loadAdminProducts() {
     try {
-        const response = await fetch(`${API_URL}?pageNumber=1&pageSize=100`, {
-            method: 'GET',
-            headers: getAuthHeaders()
+        const response = await fetchWithAuth(`${API_URL}?pageNumber=1&pageSize=100`, {
+            method: 'GET'
         });
 
         if (response.status === 401 || response.status === 403) {
@@ -462,9 +502,8 @@ if (document.getElementById('addProductForm')) {
         };
 
         try {
-            const response = await fetch(API_URL, {
+            const response = await fetchWithAuth(API_URL, {
                 method: 'POST',
-                headers: getAuthHeaders(),
                 body: JSON.stringify(newProduct)
             });
 
@@ -485,9 +524,8 @@ window.deleteProduct = async function (id) {
     if (!confirm('Ви впевнені, що хочете видалити цей товар?')) return;
 
     try {
-        const response = await fetch(`${API_URL}/${id}`, {
-            method: 'DELETE',
-            headers: getAuthHeaders()
+        const response = await fetchWithAuth(`${API_URL}/${id}`, {
+            method: 'DELETE'
         });
 
         if (response.ok) {
@@ -519,9 +557,8 @@ window.saveChanges = async function () {
     };
 
     try {
-        const response = await fetch(`${API_URL}/${id}`, {
+        const response = await fetchWithAuth(`${API_URL}/${id}`, {
             method: 'PATCH',
-            headers: getAuthHeaders(),
             body: JSON.stringify(updateDto)
         });
 
