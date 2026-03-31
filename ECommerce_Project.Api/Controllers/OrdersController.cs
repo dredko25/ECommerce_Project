@@ -35,11 +35,21 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPost("user/{userId:guid}")]
-    public async Task<ActionResult<OrderResponseDto>> Create(
-        Guid userId, CreateOrderDto dto)
+    public async Task<ActionResult<OrderResponseDto>> Create(Guid userId, CreateOrderDto dto)
     {
-        var created = await _orderService.CreateAsync(userId, dto);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        try
+        {
+            var created = await _orderService.CreateAsync(userId, dto);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Внутрішня помилка сервера при створенні замовлення." });
+        }
     }
 
     [HttpPatch("{id:guid}/status")]

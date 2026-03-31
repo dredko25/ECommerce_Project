@@ -86,25 +86,37 @@ public class OrderService : IOrderService
         order.UserId = userId;
         order.OrderDate = DateTime.UtcNow;
         order.Status = OrderStatus.Pending;
-        order.OrderNumber =
-            $"ORD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..5].ToUpper()}";
+        order.OrderNumber = $"ORD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..5].ToUpper()}";
 
         var productIds = dto.Items.Select(i => i.ProductId).ToList();
+
         var products = await _context.Products
             .Where(p => productIds.Contains(p.Id))
             .ToDictionaryAsync(p => p.Id);
 
-        order.OrderItems = dto.Items.Select(item =>
+        order.OrderItems = new List<OrderItemEntity>();
+
+        foreach (var item in dto.Items)
         {
-            var product = products[item.ProductId];
-            return new OrderItemEntity
+            if (!products.TryGetValue(item.ProductId, out var product))
+                throw new Exception($"Товар з ID {item.ProductId} не знайдено.");
+
+            if (item.Quantity > product.QuantityAvailable)
+            {
+                throw new InvalidOperationException(
+                    $"Недостатньо товару '{product.Name}' на складі. Доступно: {product.QuantityAvailable}, ви замовляєте: {item.Quantity}.");
+            }
+
+            product.QuantityAvailable -= item.Quantity;
+
+            order.OrderItems.Add(new OrderItemEntity
             {
                 Id = Guid.NewGuid(),
                 ProductId = item.ProductId,
                 Quantity = item.Quantity,
                 Price = product.Price
-            };
-        }).ToList();
+            });
+        }
 
         order.TotalAmount = order.OrderItems.Sum(i => i.Price * i.Quantity);
 

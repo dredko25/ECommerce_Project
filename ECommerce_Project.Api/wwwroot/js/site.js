@@ -314,25 +314,50 @@ async function loadCatalogProducts(search = '', categoryId = '', page = 1) {
             return;
         }
 
+        //data.items.forEach(product => {
+        //    const imageUrl = product.imageUrl || 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=600&auto=format&fit=crop';
+        //    container.innerHTML += `
+        //        <div class="col-md-4 col-sm-6 mb-4">
+        //            <div class="card h-100 border-0 shadow-sm">
+        //                <img src="${imageUrl}" class="card-img-top" alt="${product.name}" style="height: 300px; object-fit: cover;">
+        //                <div class="card-body text-center d-flex flex-column">
+        //                    <p class="text-muted small mb-1 text-uppercase">${product.categoryName || 'Прикраса'}</p>
+        //                    <a href="/Product?id=${product.id}" class="text-decoration-none text-dark">
+        //                        <h5 class="card-title mb-3">${product.name}</h5>
+        //                    </a>
+        //                    <div class="mt-auto">
+        //                        <h6 class="mb-3" style="font-size: 1.2rem;">${product.price} грн</h6>
+        //                        <button onclick="addToCart('${product.id}')" class="btn btn-outline-dark w-100 rounded-0">В кошик</button>
+        //                    </div>
+        //                </div>
+        //            </div>
+        //        </div>
+        //    `;
+        //});
         data.items.forEach(product => {
+            const isOutOfStock = product.quantityAvailable <= 0;
+            const btnClass = isOutOfStock ? 'btn-secondary disabled' : 'btn-outline-dark';
+            const btnText = isOutOfStock ? 'Немає в наявності' : 'В кошик';
+            const btnAction = isOutOfStock ? '' : `onclick="addToCart('${product.id}')"`;
             const imageUrl = product.imageUrl || 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=600&auto=format&fit=crop';
+
             container.innerHTML += `
-                <div class="col-md-4 col-sm-6 mb-4">
-                    <div class="card h-100 border-0 shadow-sm">
-                        <img src="${imageUrl}" class="card-img-top" alt="${product.name}" style="height: 300px; object-fit: cover;">
-                        <div class="card-body text-center d-flex flex-column">
-                            <p class="text-muted small mb-1 text-uppercase">${product.categoryName || 'Прикраса'}</p>
-                            <a href="/Product?id=${product.id}" class="text-decoration-none text-dark">
-                                <h5 class="card-title mb-3">${product.name}</h5>
-                            </a>
-                            <div class="mt-auto">
-                                <h6 class="mb-3" style="font-size: 1.2rem;">${product.price} грн</h6>
-                                <button onclick="addToCart('${product.id}')" class="btn btn-outline-dark w-100 rounded-0">В кошик</button>
-                            </div>
-                        </div>
+        <div class="col-md-4 col-sm-6 mb-4">
+            <div class="card h-100 border-0 shadow-sm ${isOutOfStock ? 'opacity-75' : ''}">
+                <img src="${imageUrl}" class="card-img-top ${isOutOfStock ? 'grayscale' : ''}" alt="${product.name}" style="height: 300px; object-fit: cover;">
+                <div class="card-body text-center d-flex flex-column">
+                    <p class="text-muted small mb-1 text-uppercase">${product.categoryName || 'Прикраса'}</p>
+                    <a ${isOutOfStock ? '' : `href="/Product?id=${product.id}"`} class="text-decoration-none text-dark ${isOutOfStock ? 'pe-none' : ''}">
+                        <h5 class="card-title mb-3">${product.name}</h5>
+                    </a>
+                    <div class="mt-auto">
+                        <h6 class="mb-3">${product.price} грн</h6>
+                        <button ${btnAction} class="btn ${btnClass} w-100 rounded-0">${btnText}</button>
                     </div>
                 </div>
-            `;
+            </div>
+        </div>
+    `;
         });
 
         if (paginationContainer && data.totalCount > 0) {
@@ -762,7 +787,7 @@ async function loadUserOrders() {
                 <td class="fw-bold">${order.orderNumber}</td>
                 <td>${new Date(order.orderDate).toLocaleDateString()}</td>
                 <td>${order.totalAmount} грн</td>
-                <td><span class="badge bg-info text-dark">${getStatusName(order.status)}</span></td>
+                <td><span class="badge ${getStatusBadgeClass(order.status)} fw-normal">${getStatusName(order.status)}</span></td>
                 <td class="text-end">
                     <button class="btn btn-sm btn-outline-dark rounded-0" onclick="viewOrderDetails('${order.id}')">
                         Переглянути
@@ -773,6 +798,18 @@ async function loadUserOrders() {
     } catch (error) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-danger">Помилка завантаження</td></tr>';
     }
+}
+function getStatusBadgeClass(status) {
+    const badgeMap = {
+        'Pending': 'bg-warning text-dark',      // Жовтий - в обробці
+        'Paid': 'bg-primary text-white',        // Синій - оплачено
+        'Shipped': 'bg-info text-dark',         // Блакитний - відправлено
+        'Delivered': 'bg-success text-white',   // Зелений - доставлено
+        'Cancelled': 'bg-danger text-white'     // Червоний - скасовано
+    };
+
+    // Якщо статус не знайдено - сірий
+    return badgeMap[status] || 'bg-secondary text-white';
 }
 
 async function viewOrderDetails(orderId) {
