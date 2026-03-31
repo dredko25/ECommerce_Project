@@ -1,0 +1,40 @@
+﻿@page
+@model ECommerce_Project.Api.Pages.OrdersModel
+@{
+    ViewData["Title"] = "Мої замовлення";
+}
+
+<div class="container mt-4 mb-5" id="orders-page-container">
+    <h2 class="mb-4" style="font-family: 'Georgia', serif;">Мої замовлення</h2>
+
+    <div class="bg-white rounded shadow-sm">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Номер замовлення</th>
+                        <th>Дата</th>
+                        <th>Сума</th>
+                        <th>Статус</th>
+                        <th>Дії</th>
+                    </tr>
+                </thead>
+                <tbody id="orders-table-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="orderDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content rounded-0 border-0">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title" id="modalOrderNumber" style="font-family: 'Georgia', serif;">Деталі замовлення</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="order-modal-content">
+            </div>
+        </div>
+    </div>
+</div>

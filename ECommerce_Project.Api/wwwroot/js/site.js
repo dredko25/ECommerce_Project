@@ -23,6 +23,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('cart-container')) {
         loadCart();
     }
+
+    if (document.getElementById('checkout-container')) {
+        loadCheckoutSummary();
+    }
+
+    if (document.getElementById('orders-page-container')) {
+        loadUserOrders();
+    }
 });
 
 
@@ -103,12 +111,14 @@ function updateNavigation() {
     const navCart = document.getElementById('nav-cart');
     const navLogout = document.getElementById('nav-logout');
     const navAdmin = document.getElementById('nav-admin');
+    const navOrders = document.getElementById('nav-orders');
 
     if (token) {
         if (navLogin) navLogin.classList.add('d-none');
         if (navRegister) navRegister.classList.add('d-none');
         if (navCart) navCart.classList.remove('d-none');
         if (navLogout) navLogout.classList.remove('d-none');
+        if (navOrders) navOrders.classList.remove('d-none');
 
         if (navAdmin) {
             if (role === 'Admin') {
@@ -123,6 +133,7 @@ function updateNavigation() {
         if (navCart) navCart.classList.add('d-none');
         if (navLogout) navLogout.classList.add('d-none');
         if (navAdmin) navAdmin.classList.add('d-none');
+        if (navOrders) navOrders.classList.add('d-none');
     }
 }
 
@@ -303,25 +314,50 @@ async function loadCatalogProducts(search = '', categoryId = '', page = 1) {
             return;
         }
 
+        //data.items.forEach(product => {
+        //    const imageUrl = product.imageUrl || 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=600&auto=format&fit=crop';
+        //    container.innerHTML += `
+        //        <div class="col-md-4 col-sm-6 mb-4">
+        //            <div class="card h-100 border-0 shadow-sm">
+        //                <img src="${imageUrl}" class="card-img-top" alt="${product.name}" style="height: 300px; object-fit: cover;">
+        //                <div class="card-body text-center d-flex flex-column">
+        //                    <p class="text-muted small mb-1 text-uppercase">${product.categoryName || 'Прикраса'}</p>
+        //                    <a href="/Product?id=${product.id}" class="text-decoration-none text-dark">
+        //                        <h5 class="card-title mb-3">${product.name}</h5>
+        //                    </a>
+        //                    <div class="mt-auto">
+        //                        <h6 class="mb-3" style="font-size: 1.2rem;">${product.price} грн</h6>
+        //                        <button onclick="addToCart('${product.id}')" class="btn btn-outline-dark w-100 rounded-0">В кошик</button>
+        //                    </div>
+        //                </div>
+        //            </div>
+        //        </div>
+        //    `;
+        //});
         data.items.forEach(product => {
+            const isOutOfStock = product.quantityAvailable <= 0;
+            const btnClass = isOutOfStock ? 'btn-secondary disabled' : 'btn-outline-dark';
+            const btnText = isOutOfStock ? 'Немає в наявності' : 'В кошик';
+            const btnAction = isOutOfStock ? '' : `onclick="addToCart('${product.id}')"`;
             const imageUrl = product.imageUrl || 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=600&auto=format&fit=crop';
+
             container.innerHTML += `
-                <div class="col-md-4 col-sm-6 mb-4">
-                    <div class="card h-100 border-0 shadow-sm">
-                        <img src="${imageUrl}" class="card-img-top" alt="${product.name}" style="height: 300px; object-fit: cover;">
-                        <div class="card-body text-center d-flex flex-column">
-                            <p class="text-muted small mb-1 text-uppercase">${product.categoryName || 'Прикраса'}</p>
-                            <a href="/Product?id=${product.id}" class="text-decoration-none text-dark">
-                                <h5 class="card-title mb-3">${product.name}</h5>
-                            </a>
-                            <div class="mt-auto">
-                                <h6 class="mb-3" style="font-size: 1.2rem;">${product.price} грн</h6>
-                                <button onclick="addToCart('${product.id}')" class="btn btn-outline-dark w-100 rounded-0">В кошик</button>
-                            </div>
-                        </div>
+        <div class="col-md-4 col-sm-6 mb-4">
+            <div class="card h-100 border-0 shadow-sm ${isOutOfStock ? 'opacity-75' : ''}">
+                <img src="${imageUrl}" class="card-img-top ${isOutOfStock ? 'grayscale' : ''}" alt="${product.name}" style="height: 300px; object-fit: cover;">
+                <div class="card-body text-center d-flex flex-column">
+                    <p class="text-muted small mb-1 text-uppercase">${product.categoryName || 'Прикраса'}</p>
+                    <a ${isOutOfStock ? '' : `href="/Product?id=${product.id}"`} class="text-decoration-none text-dark ${isOutOfStock ? 'pe-none' : ''}">
+                        <h5 class="card-title mb-3">${product.name}</h5>
+                    </a>
+                    <div class="mt-auto">
+                        <h6 class="mb-3">${product.price} грн</h6>
+                        <button ${btnAction} class="btn ${btnClass} w-100 rounded-0">${btnText}</button>
                     </div>
                 </div>
-            `;
+            </div>
+        </div>
+    `;
         });
 
         if (paginationContainer && data.totalCount > 0) {
@@ -497,7 +533,19 @@ async function loadCart() {
                         </div>
                     </td>
                     <td>${item.unitPrice} грн</td>
-                    <td class="text-center">${item.quantity} шт.</td>
+                    <td>
+                        <div class="input-group input-group-sm mx-auto" style="width: 120px;">
+                            <button class="btn btn-outline-secondary" type="button"
+                                    onclick="changeQuantity('${item.id}', -1, ${item.quantity})">-</button>
+        
+                            <input type="number" class="form-control text-center" value="${item.quantity}" min="1" 
+                                   onchange="updateQuantity('${item.id}', this.value)"
+                                   onkeypress="if(event.key === 'Enter') this.blur();">
+        
+                            <button class="btn btn-outline-secondary" type="button" 
+                                    onclick="changeQuantity('${item.id}', 1, ${item.quantity})">+</button>
+                        </div>
+                    </td>
                     <td class="fw-bold">${itemTotal} грн</td>
                     <td class="text-end">
                         <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart('${item.id}')">
@@ -516,7 +564,7 @@ async function loadCart() {
                 <h3 style="font-family: 'Georgia', serif;">Разом: ${grandTotal} грн</h3>
             </div>
             <div class="d-flex justify-content-end mt-3">
-                <button class="btn btn-dark btn-lg rounded-0 px-5">ОФОРМИТИ ЗАМОВЛЕННЯ</button>
+                <button class="btn btn-dark btn-lg rounded-0 px-5" onclick="window.location.href='/Checkout'">ОФОРМИТИ ЗАМОВЛЕННЯ</button>
             </div>
         `;
 
@@ -524,6 +572,45 @@ async function loadCart() {
 
     } catch (error) {
         container.innerHTML = `<div class="alert alert-danger text-center">${error.message}</div>`;
+    }
+}
+
+window.changeQuantity = function (cartItemId, delta, currentQuantity) {
+    const newQuantity = parseInt(currentQuantity) + delta;
+
+    if (newQuantity < 1) return;
+
+    updateQuantity(cartItemId, newQuantity);
+}
+
+
+window.updateQuantity = async function (cartItemId, newQuantity) {
+    const userId = localStorage.getItem('userId');
+    const quantity = parseInt(newQuantity);
+
+  
+    if (isNaN(quantity) || quantity < 1) {
+        loadCart(); 
+        return;
+    }
+
+    try {
+        const response = await fetchWithAuth(`/api/cart/user/${userId}/items/${cartItemId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(quantity)
+        });
+
+        if (response.ok) {
+            loadCart();
+        } else {
+            alert('Не вдалося оновити кількість товару');
+            loadCart();
+        }
+    } catch (error) {
+        console.error("Помилка при оновленні кількості:", error);
     }
 }
 
@@ -577,3 +664,205 @@ window.removeFromCart = async function (cartItemId) {
         alert('Помилка з\'єднання з сервером.');
     }
 };
+
+let checkoutItems = [];
+
+async function loadCheckoutSummary() {
+    const summaryContainer = document.getElementById('checkout-summary');
+    const totalContainer = document.getElementById('checkout-total');
+    const userId = localStorage.getItem('userId');
+
+    if (!userId) {
+        window.location.href = '/Login';
+        return;
+    }
+
+    try {
+        const response = await fetchWithAuth(`/api/cart/user/${userId}`);
+
+        if (!response.ok || response.status === 404) {
+            alert("Ваш кошик порожній!");
+            window.location.href = '/';
+            return;
+        }
+
+        const cart = await response.json();
+
+        if (!cart.items || cart.items.length === 0) {
+            alert("Ваш кошик порожній!");
+            window.location.href = '/';
+            return;
+        }
+
+        let html = '';
+        let grandTotal = 0;
+        checkoutItems = [];
+
+        cart.items.forEach(item => {
+            const itemTotal = item.unitPrice * item.quantity;
+            grandTotal += itemTotal;
+
+            checkoutItems.push({
+                productId: item.productId,
+                quantity: item.quantity
+            });
+
+            html += `
+                <div class="d-flex justify-content-between mb-3 align-items-center">
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-secondary rounded-pill me-2">${item.quantity}</span>
+                        <span>${item.productName}</span>
+                    </div>
+                    <span class="fw-bold">${itemTotal} грн</span>
+                </div>
+            `;
+        });
+
+        summaryContainer.innerHTML = html;
+        totalContainer.innerText = `${grandTotal} грн`;
+
+    } catch (error) {
+        summaryContainer.innerHTML = `<div class="alert alert-danger">Помилка завантаження даних</div>`;
+    }
+}
+
+if (document.getElementById('checkoutForm')) {
+    document.getElementById('checkoutForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const userId = localStorage.getItem('userId');
+        const submitBtn = document.getElementById('submitOrderBtn');
+
+        const createOrderDto = {
+            address: document.getElementById('address').value,
+            paymentMethod: document.getElementById('paymentMethod').value,
+            items: checkoutItems
+        };
+
+        try {
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'ОБРОБКА...';
+
+            const response = await fetchWithAuth(`/api/orders/user/${userId}`, {
+                method: 'POST',
+                body: JSON.stringify(createOrderDto)
+            });
+
+            if (!response.ok) {
+                const err = await response.text();
+                throw new Error(err || 'Помилка при створенні замовлення');
+            }
+
+            await fetchWithAuth(`/api/cart/user/${userId}`, {
+                method: 'DELETE'
+            });
+
+            alert('Дякуємо! Ваше замовлення успішно оформлено.');
+            window.location.href = '/';
+
+        } catch (error) {
+            console.error('Помилка:', error);
+            alert(error.message);
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'ПІДТВЕРДИТИ ЗАМОВЛЕННЯ';
+        }
+    });
+}
+
+async function loadUserOrders() {
+    const tbody = document.getElementById('orders-table-body');
+    const userId = localStorage.getItem('userId');
+
+    try {
+        const response = await fetchWithAuth(`/api/orders/user/${userId}`);
+        const orders = await response.json();
+
+        if (!orders || orders.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Ви ще не робили замовлень</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = orders.map(order => `
+            <tr>
+                <td class="fw-bold">${order.orderNumber}</td>
+                <td>${new Date(order.orderDate).toLocaleDateString()}</td>
+                <td>${order.totalAmount} грн</td>
+                <td><span class="badge ${getStatusBadgeClass(order.status)} fw-normal">${getStatusName(order.status)}</span></td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-dark rounded-0" onclick="viewOrderDetails('${order.id}')">
+                        Переглянути
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-danger">Помилка завантаження</td></tr>';
+    }
+}
+function getStatusBadgeClass(status) {
+    const badgeMap = {
+        'Pending': 'bg-warning text-dark',      // Жовтий - в обробці
+        'Paid': 'bg-primary text-white',        // Синій - оплачено
+        'Shipped': 'bg-info text-dark',         // Блакитний - відправлено
+        'Delivered': 'bg-success text-white',   // Зелений - доставлено
+        'Cancelled': 'bg-danger text-white'     // Червоний - скасовано
+    };
+
+    // Якщо статус не знайдено - сірий
+    return badgeMap[status] || 'bg-secondary text-white';
+}
+
+async function viewOrderDetails(orderId) {
+    const modalContent = document.getElementById('order-modal-content');
+    const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+
+    try {
+        const response = await fetchWithAuth(`/api/orders/${orderId}`);
+        const order = await response.json();
+
+        modalContent.innerHTML = `
+            <div class="mb-4">
+                <p class="mb-1 text-muted small">Адреса доставки:</p>
+                <p class="fw-bold">${order.address}</p>
+                <p class="mb-1 text-muted small">Спосіб оплати:</p>
+                <p class="fw-bold">${order.paymentMethod}</p>
+            </div>
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Товар</th>
+                        <th class="text-center">К-сть</th>
+                        <th class="text-end">Ціна</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${order.orderItems.map(item => `
+                        <tr>
+                            <td>${item.productName}</td>
+                            <td class="text-center">${item.quantity}</td>
+                            <td class="text-end">${item.price} грн</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            <div class="text-end mt-3">
+                <h5>Всього: ${order.totalAmount} грн</h5>
+            </div>
+        `;
+        modal.show();
+    } catch (error) {
+        alert("Не вдалося завантажити деталі замовлення");
+    }
+}
+
+function getStatusName(status) {
+    const statusMap = {
+        'Pending': 'В обробці',
+        'Paid': 'Оплачено',
+        'Shipped': 'Відправлено',
+        'Delivered': 'Доставлено',
+        'Cancelled': 'Скасовано'
+    };
+
+    return statusMap[status] || status;
+}
