@@ -27,6 +27,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('checkout-container')) {
         loadCheckoutSummary();
     }
+
+    if (document.getElementById('orders-page-container')) {
+        loadUserOrders();
+    }
 });
 
 
@@ -107,12 +111,14 @@ function updateNavigation() {
     const navCart = document.getElementById('nav-cart');
     const navLogout = document.getElementById('nav-logout');
     const navAdmin = document.getElementById('nav-admin');
+    const navOrders = document.getElementById('nav-orders');
 
     if (token) {
         if (navLogin) navLogin.classList.add('d-none');
         if (navRegister) navRegister.classList.add('d-none');
         if (navCart) navCart.classList.remove('d-none');
         if (navLogout) navLogout.classList.remove('d-none');
+        if (navOrders) navOrders.classList.remove('d-none');
 
         if (navAdmin) {
             if (role === 'Admin') {
@@ -127,6 +133,7 @@ function updateNavigation() {
         if (navCart) navCart.classList.add('d-none');
         if (navLogout) navLogout.classList.add('d-none');
         if (navAdmin) navAdmin.classList.add('d-none');
+        if (navOrders) navOrders.classList.add('d-none');
     }
 }
 
@@ -735,4 +742,90 @@ if (document.getElementById('checkoutForm')) {
             submitBtn.innerText = 'ПІДТВЕРДИТИ ЗАМОВЛЕННЯ';
         }
     });
+}
+
+async function loadUserOrders() {
+    const tbody = document.getElementById('orders-table-body');
+    const userId = localStorage.getItem('userId');
+
+    try {
+        const response = await fetchWithAuth(`/api/orders/user/${userId}`);
+        const orders = await response.json();
+
+        if (!orders || orders.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Ви ще не робили замовлень</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = orders.map(order => `
+            <tr>
+                <td class="fw-bold">${order.orderNumber}</td>
+                <td>${new Date(order.orderDate).toLocaleDateString()}</td>
+                <td>${order.totalAmount} грн</td>
+                <td><span class="badge bg-info text-dark">${getStatusName(order.status)}</span></td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-dark rounded-0" onclick="viewOrderDetails('${order.id}')">
+                        Переглянути
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-danger">Помилка завантаження</td></tr>';
+    }
+}
+
+async function viewOrderDetails(orderId) {
+    const modalContent = document.getElementById('order-modal-content');
+    const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+
+    try {
+        const response = await fetchWithAuth(`/api/orders/${orderId}`);
+        const order = await response.json();
+
+        modalContent.innerHTML = `
+            <div class="mb-4">
+                <p class="mb-1 text-muted small">Адреса доставки:</p>
+                <p class="fw-bold">${order.address}</p>
+                <p class="mb-1 text-muted small">Спосіб оплати:</p>
+                <p class="fw-bold">${order.paymentMethod}</p>
+            </div>
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Товар</th>
+                        <th class="text-center">К-сть</th>
+                        <th class="text-end">Ціна</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${order.orderItems.map(item => `
+                        <tr>
+                            <td>${item.productName}</td>
+                            <td class="text-center">${item.quantity}</td>
+                            <td class="text-end">${item.price} грн</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            <div class="text-end mt-3">
+                <h5>Всього: ${order.totalAmount} грн</h5>
+            </div>
+        `;
+        modal.show();
+    } catch (error) {
+        alert("Не вдалося завантажити деталі замовлення");
+    }
+}
+
+function getStatusName(status) {
+    const statusMap = {
+        'Pending': 'В обробці',
+        'Paid': 'Оплачено',
+        'Shipped': 'Відправлено',
+        'Delivered': 'Доставлено',
+        'Cancelled': 'Скасовано'
+    };
+
+    return statusMap[status] || status;
 }
