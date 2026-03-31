@@ -497,7 +497,19 @@ async function loadCart() {
                         </div>
                     </td>
                     <td>${item.unitPrice} грн</td>
-                    <td class="text-center">${item.quantity} шт.</td>
+                    <td>
+                        <div class="input-group input-group-sm mx-auto" style="width: 120px;">
+                            <button class="btn btn-outline-secondary" type="button"
+                                    onclick="changeQuantity('${item.id}', -1, ${item.quantity})">-</button>
+        
+                            <input type="number" class="form-control text-center" value="${item.quantity}" min="1" 
+                                   onchange="updateQuantity('${item.id}', this.value)"
+                                   onkeypress="if(event.key === 'Enter') this.blur();">
+        
+                            <button class="btn btn-outline-secondary" type="button" 
+                                    onclick="changeQuantity('${item.id}', 1, ${item.quantity})">+</button>
+                        </div>
+                    </td>
                     <td class="fw-bold">${itemTotal} грн</td>
                     <td class="text-end">
                         <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart('${item.id}')">
@@ -524,6 +536,45 @@ async function loadCart() {
 
     } catch (error) {
         container.innerHTML = `<div class="alert alert-danger text-center">${error.message}</div>`;
+    }
+}
+
+window.changeQuantity = function (cartItemId, delta, currentQuantity) {
+    const newQuantity = parseInt(currentQuantity) + delta;
+
+    if (newQuantity < 1) return;
+
+    updateQuantity(cartItemId, newQuantity);
+}
+
+
+window.updateQuantity = async function (cartItemId, newQuantity) {
+    const userId = localStorage.getItem('userId');
+    const quantity = parseInt(newQuantity);
+
+  
+    if (isNaN(quantity) || quantity < 1) {
+        loadCart(); 
+        return;
+    }
+
+    try {
+        const response = await fetchWithAuth(`/api/cart/user/${userId}/items/${cartItemId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(quantity)
+        });
+
+        if (response.ok) {
+            loadCart();
+        } else {
+            alert('Не вдалося оновити кількість товару');
+            loadCart();
+        }
+    } catch (error) {
+        console.error("Помилка при оновленні кількості:", error);
     }
 }
 
