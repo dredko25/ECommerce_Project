@@ -23,6 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('cart-container')) {
         loadCart();
     }
+
+    if (document.getElementById('checkout-container')) {
+        loadCheckoutSummary();
+    }
 });
 
 
@@ -528,7 +532,7 @@ async function loadCart() {
                 <h3 style="font-family: 'Georgia', serif;">Разом: ${grandTotal} грн</h3>
             </div>
             <div class="d-flex justify-content-end mt-3">
-                <button class="btn btn-dark btn-lg rounded-0 px-5">ОФОРМИТИ ЗАМОВЛЕННЯ</button>
+                <button class="btn btn-dark btn-lg rounded-0 px-5" onclick="window.location.href='/Checkout'">ОФОРМИТИ ЗАМОВЛЕННЯ</button>
             </div>
         `;
 
@@ -628,3 +632,107 @@ window.removeFromCart = async function (cartItemId) {
         alert('Помилка з\'єднання з сервером.');
     }
 };
+
+let checkoutItems = [];
+
+async function loadCheckoutSummary() {
+    const summaryContainer = document.getElementById('checkout-summary');
+    const totalContainer = document.getElementById('checkout-total');
+    const userId = localStorage.getItem('userId');
+
+    if (!userId) {
+        window.location.href = '/Login';
+        return;
+    }
+
+    try {
+        const response = await fetchWithAuth(`/api/cart/user/${userId}`);
+
+        if (!response.ok || response.status === 404) {
+            alert("Ваш кошик порожній!");
+            window.location.href = '/';
+            return;
+        }
+
+        const cart = await response.json();
+
+        if (!cart.items || cart.items.length === 0) {
+            alert("Ваш кошик порожній!");
+            window.location.href = '/';
+            return;
+        }
+
+        let html = '';
+        let grandTotal = 0;
+        checkoutItems = [];
+
+        cart.items.forEach(item => {
+            const itemTotal = item.unitPrice * item.quantity;
+            grandTotal += itemTotal;
+
+            checkoutItems.push({
+                productId: item.productId,
+                quantity: item.quantity
+            });
+
+            html += `
+                <div class="d-flex justify-content-between mb-3 align-items-center">
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-secondary rounded-pill me-2">${item.quantity}</span>
+                        <span>${item.productName}</span>
+                    </div>
+                    <span class="fw-bold">${itemTotal} грн</span>
+                </div>
+            `;
+        });
+
+        summaryContainer.innerHTML = html;
+        totalContainer.innerText = `${grandTotal} грн`;
+
+    } catch (error) {
+        summaryContainer.innerHTML = `<div class="alert alert-danger">Помилка завантаження даних</div>`;
+    }
+}
+
+if (document.getElementById('checkoutForm')) {
+    document.getElementById('checkoutForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const userId = localStorage.getItem('userId');
+        const submitBtn = document.getElementById('submitOrderBtn');
+
+        const createOrderDto = {
+            address: document.getElementById('address').value,
+            paymentMethod: document.getElementById('paymentMethod').value,
+            items: checkoutItems
+        };
+
+        try {
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'ОБРОБКА...';
+
+            const response = await fetchWithAuth(`/api/orders/user/${userId}`, {
+                method: 'POST',
+                body: JSON.stringify(createOrderDto)
+            });
+
+            if (!response.ok) {
+                const err = await response.text();
+                throw new Error(err || 'Помилка при створенні замовлення');
+            }
+
+            await fetchWithAuth(`/api/cart/user/${userId}`, {
+                method: 'DELETE'
+            });
+
+            alert('Дякуємо! Ваше замовлення успішно оформлено.');
+            window.location.href = '/';
+
+        } catch (error) {
+            console.error('Помилка:', error);
+            alert(error.message);
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'ПІДТВЕРДИТИ ЗАМОВЛЕННЯ';
+        }
+    });
+}

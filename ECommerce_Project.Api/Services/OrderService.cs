@@ -87,7 +87,7 @@ public class OrderService : IOrderService
         order.OrderDate = DateTime.UtcNow;
         order.Status = OrderStatus.Pending;
         order.OrderNumber =
-            $"ORD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
+            $"ORD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..5].ToUpper()}";
 
         var productIds = dto.Items.Select(i => i.ProductId).ToList();
         var products = await _context.Products
