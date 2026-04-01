@@ -19,6 +19,10 @@ public class UsersController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    /// Retrieves a list of all registered users.
+    /// </summary>
+    /// <returns>An HTTP 200 OK response containing a list of user response data transfer objects.</returns>
     [HttpGet]
     public async Task<ActionResult<List<UserResponseDto>>> GetAll()
     {
@@ -26,6 +30,12 @@ public class UsersController : ControllerBase
         return Ok(users);
     }
 
+    /// <summary>
+    /// Retrieves a specific user by their unique identifier.
+    /// </summary>
+    /// <param name="id">The unique identifier of the user to retrieve.</param>
+    /// <returns>An HTTP 200 OK response with the user details if found; 
+    /// otherwise, an HTTP 404 Not Found response.</returns>
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<UserResponseDto>> GetById(Guid id)
     {
@@ -33,6 +43,14 @@ public class UsersController : ControllerBase
         return user is null ? NotFound() : Ok(user);
     }
 
+    /// <summary>
+    /// Registers a new user account in the system.
+    /// </summary>
+    /// <param name="dto">The data transfer object containing the necessary 
+    /// information to register the user (e.g., email, password).</param>
+    /// <returns>An HTTP 201 Created response containing the newly created user's 
+    /// information and tokens if successful; otherwise, an HTTP 409 Conflict 
+    /// if the email is already registered.</returns>
     [HttpPost("register")]
     public async Task<ActionResult<UserResponseDto>> Create(CreateUserDto dto)
     {
@@ -57,6 +75,12 @@ public class UsersController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Authenticates a user based on their email and password.
+    /// </summary>
+    /// <param name="dto">The data transfer object containing the user's login credentials.</param>
+    /// <returns>An HTTP 200 OK response with authentication tokens and user details if successful; 
+    /// otherwise, an HTTP 401 Unauthorized response.</returns>
     [HttpPost("login")]
     public async Task<ActionResult<UserResponseDto>> Login(LoginUserDto dto)
     {
@@ -77,6 +101,12 @@ public class UsersController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Refreshes the user's authentication tokens using a valid refresh token.
+    /// </summary>
+    /// <param name="dto">The data transfer object containing the user ID and the current refresh token.</param>
+    /// <returns>An HTTP 200 OK response with the new access and refresh tokens if successful; 
+    /// otherwise, an HTTP 401 Unauthorized response if the token is invalid or expired.</returns>
     [HttpPost("refresh-token")]
     public async Task<ActionResult<UserResponseDto>> RefreshToken(RefreshTokenRequestDto dto)
     {
@@ -101,6 +131,12 @@ public class UsersController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Logs out the currently authenticated user by invalidating 
+    /// their active refresh token on the server.
+    /// </summary>
+    /// <returns>An HTTP 200 OK response if the logout is successful; 
+    /// otherwise, an HTTP 400 Bad Request or 401 Unauthorized response.</returns>
     [Authorize]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()
@@ -122,6 +158,13 @@ public class UsersController : ControllerBase
         return Ok(new { message = "Ви успішно вийшли з системи" });
     }
 
+    /// <summary>
+    /// Updates the details of an existing user.
+    /// </summary>
+    /// <param name="id">The unique identifier of the user to update.</param>
+    /// <param name="dto">The data transfer object containing the updated user information.</param>
+    /// <returns>An HTTP 200 OK response with the updated user details if successful; 
+    /// otherwise, an HTTP 404 Not Found response.</returns>
     [HttpPatch("{id:guid}")]
     public async Task<ActionResult<UserResponseDto>> Update(Guid id, UpdateUserDto dto)
     {
@@ -129,7 +172,12 @@ public class UsersController : ControllerBase
         return updated is null ? NotFound() : Ok(updated);
     }
 
-    //[Authorize(Roles = "Admin")]
+    /// <summary>
+    /// Deletes a user account from the system based on their unique identifier.
+    /// </summary>
+    /// <param name="id">The unique identifier of the user to delete.</param>
+    /// <returns>An HTTP 204 No Content response if the deletion is successful; 
+    /// otherwise, an HTTP 404 Not Found response if the user does not exist.</returns>
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
