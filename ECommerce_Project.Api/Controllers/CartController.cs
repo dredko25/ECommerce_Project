@@ -22,20 +22,33 @@ public class CartController : ControllerBase
         var cart = await _cartService.GetByUserAsync(userId);
         return cart is null ? NotFound() : Ok(cart);
     }
-    
+
     [HttpPost("user/{userId:guid}/items")]
     public async Task<ActionResult<CartResponseDto>> AddItem(Guid userId, [FromBody] AddToCartDto dto)
     {
-        var cart = await _cartService.AddItemAsync(userId, dto);
-        return Ok(cart);
+        try
+        {
+            var cart = await _cartService.AddItemAsync(userId, dto);
+            return Ok(cart);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPatch("user/{userId:guid}/items/{cartItemId:guid}")]
-    public async Task<ActionResult<CartResponseDto>> UpdateQuantity(
-        Guid userId, Guid cartItemId, [FromBody] int quantity)
+    public async Task<ActionResult<CartResponseDto>> UpdateQuantity(Guid userId, Guid cartItemId, [FromBody] int quantity)
     {
-        var cart = await _cartService.UpdateItemQuantityAsync(userId, cartItemId, quantity);
-        return cart is null ? NotFound() : Ok(cart);
+        try
+        {
+            var cart = await _cartService.UpdateItemQuantityAsync(userId, cartItemId, quantity);
+            return cart is null ? NotFound() : Ok(cart);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpDelete("items/{cartItemId:guid}")]
