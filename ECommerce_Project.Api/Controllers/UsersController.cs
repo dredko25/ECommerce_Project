@@ -101,30 +101,6 @@ public class UsersController : ControllerBase
         }
     }
 
-    [HttpPost("refresh-token")]
-    public async Task<ActionResult<UserResponseDto>> RefreshToken(RefreshTokenRequestDto dto)
-    {
-        _logger.LogInformation("POST /refresh-token — спроба для UserId: {UserId}", dto.UserId);
-        try
-        {
-            var result = await _userService.RefreshTokensAsync(dto);
-
-            if (result == null)
-            {
-                _logger.LogWarning("POST /refresh-token — відмовлено для UserId: {UserId} (недійсний токен)", dto.UserId);
-                return Unauthorized(new { message = "Недійсний refresh token. Увійдіть знову." });
-            }
-
-            _logger.LogInformation("POST /refresh-token — успіх для UserId: {UserId}", dto.UserId);
-            return Ok(result);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            _logger.LogWarning("POST /refresh-token — невдача для UserId: {UserId}", dto.UserId);
-            return Unauthorized(new { message = ex.Message });
-        }
-    }
-
     /// <summary>
     /// Refreshes the user's authentication tokens using a valid refresh token.
     /// </summary>
