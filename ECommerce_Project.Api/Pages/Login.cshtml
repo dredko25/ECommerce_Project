@@ -1,4 +1,8 @@
 ﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Логін";
+}
 <div class="container mt-5" style="max-width: 400px;">
     <h2 class="text-center mb-4">Вхід</h2>
     <form id="loginForm" onsubmit="handleLogin(event)">

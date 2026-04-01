@@ -1,0 +1,52 @@
+﻿@page
+@model ECommerce_Project.Api.Pages.CheckoutModel
+@{
+    ViewData["Title"] = "Оформлення замовлення";
+}
+
+<div class="container mt-4 mb-5" id="checkout-container">
+    <h2 class="mb-4" style="font-family: 'Georgia', serif;">Оформлення замовлення</h2>
+
+    <div class="row">
+        <div class="col-md-7 mb-4">
+            <div class="card border-0 shadow-sm p-4">
+                <h4 class="mb-3">Дані доставки</h4>
+                <form id="checkoutForm">
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Повна адреса доставки</label>
+                        <textarea class="form-control" id="address" rows="3" placeholder="Місто, вулиця, будинок, квартира, індекс..." required></textarea>
+                    </div>
+
+                    <h4 class="mb-3 mt-4">Спосіб оплати</h4>
+                    <div class="mb-4">
+                        <select class="form-select" id="paymentMethod" required>
+                            <option value="">Оберіть спосіб оплати</option>
+                            <option value="Card">Банківська картка (онлайн)</option>
+                            <option value="CashOnDelivery">Накладений платіж (при отриманні)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-dark btn-lg w-100 rounded-0" id="submitOrderBtn">
+                        ПІДТВЕРДИТИ ЗАМОВЛЕННЯ
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="col-md-5">
+            <div class="card border-0 shadow-sm p-4 bg-light">
+                <h4 class="mb-4">Ваше замовлення</h4>
+                <div id="checkout-summary">
+                    <div class="text-center">
+                        <div class="spinner-border text-secondary" role="status"></div>
+                    </div>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">До сплати:</h5>
+                    <h4 class="mb-0" id="checkout-total" style="font-family: 'Georgia', serif;">0 грн</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

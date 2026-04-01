@@ -118,7 +118,7 @@ public class UserService : IUserService
         {
             AccessToken = token,
             RefreshToken = refreshToken,
-            ExpiresAt = DateTime.UtcNow.AddDays(1),
+            ExpiresAt = DateTime.UtcNow.AddMinutes(15),
             User = _mapper.Map<UserResponseDto>(user)
         };
     }
@@ -156,6 +156,61 @@ public class UserService : IUserService
 
         _context.Users.Remove(user);
         await _context.SaveChangesAsync();
+        return true;
+    }
+
+    /// <summary>
+    /// Attempts to refresh the access and refresh tokens for a user based on the provided refresh token request.
+    /// </summary>
+    /// <remarks>Use this method to obtain new tokens when the current access token has expired. The method
+    /// returns null if the provided refresh token is invalid or does not match the user.</remarks>
+    /// <param name="dto">The refresh token request containing the user identifier and the refresh token to validate.</param>
+    /// <returns>An authentication response containing new access and refresh tokens if the refresh token is valid; otherwise,
+    /// null.</returns>
+    public async Task<AuthResponseDto?> RefreshTokensAsync(RefreshTokenRequestDto dto)
+    {
+        var user = await _tokenService.ValidateRefreshTokenAsync(dto.UserId, dto.RefreshToken);
+        if (user is null)
+        {
+            _logger.LogWarning("Невалідний refresh token для UserId: {UserId}", dto.UserId);
+            return null;
+        }
+        var newAccessToken = _tokenService.GenerateAccessToken(user);
+        var newRefreshToken = await _tokenService.GenerateAndSaveRefreshTokenAsync(user);
+
+        return new AuthResponseDto
+        {
+            AccessToken = newAccessToken,
+            RefreshToken = newRefreshToken,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(15),
+            User = _mapper.Map<UserResponseDto>(user)
+        };
+    }
+
+    /// <summary>
+    /// Logs out the specified user by invalidating their refresh token asynchronously.
+    /// </summary>
+    /// <remarks>This method removes the user's refresh token, effectively ending their session. If the user
+    /// does not exist, no action is taken and the method returns false.</remarks>
+    /// <param name="userId">The unique identifier of the user to log out.</param>
+    /// <returns>true if the user was found and logged out successfully; otherwise, false.</returns>
+    public async Task<bool> LogoutAsync(Guid userId)
+    {
+        var user = await _context.Users.FindAsync(userId);
+
+        if (user is null)
+        {
+            _logger.LogWarning("Спроба logout для неіснуючого користувача з ID: {UserId}", userId);
+            return false;
+        }
+
+        user.RefreshToken = null;
+        user.RefreshTokenExpiryTime = null;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Користувач успішно вийшов. Токен видалено. UserId: {UserId}", userId);
+
         return true;
     }
 }

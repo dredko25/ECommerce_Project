@@ -55,6 +55,11 @@ public class CartService : ICartService
     /// the updated state of the user's cart.</returns>
     public async Task<CartResponseDto> AddItemAsync(Guid userId, AddToCartDto dto)
     {
+        var product = await _context.Products
+            .FindAsync(dto.ProductId);
+        if (product == null) 
+            throw new Exception("Товар не знайдено");
+
         var cart = await _context.Carts
             .Include(c => c.CartItems)
             .FirstOrDefaultAsync(c => c.UserId == userId);
@@ -73,6 +78,10 @@ public class CartService : ICartService
         }
 
         var existingItem = cart.CartItems.FirstOrDefault(i => i.ProductId == dto.ProductId);
+        int requestedQuantity = (existingItem?.Quantity ?? 0) + dto.Quantity;
+
+        if (requestedQuantity > product.QuantityAvailable)
+            throw new InvalidOperationException($"На складі доступно лише {product.QuantityAvailable} шт.");
 
         if (existingItem != null)
         {
@@ -112,6 +121,7 @@ public class CartService : ICartService
     {
         var cart = await _context.Carts
             .Include(c => c.CartItems)
+            .ThenInclude(i => i.Product)
             .FirstOrDefaultAsync(c => c.UserId == userId);
 
         if (cart == null) return null;
@@ -125,6 +135,10 @@ public class CartService : ICartService
         }
         else
         {
+            if (quantity > item.Product?.QuantityAvailable)
+            {
+                throw new InvalidOperationException($"Максимально доступна кількість: {item.Product.QuantityAvailable} шт.");
+            }
             item.Quantity = quantity;
         }
 

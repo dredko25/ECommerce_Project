@@ -60,11 +60,21 @@ public class OrdersController : ControllerBase
     /// an HTTP 400 Bad Request if validation fails; 
     /// or an HTTP 500 Internal Server Error if an unexpected issue occurs.</returns>
     [HttpPost("user/{userId:guid}")]
-    public async Task<ActionResult<OrderResponseDto>> Create(
-        Guid userId, CreateOrderDto dto)
+    public async Task<ActionResult<OrderResponseDto>> Create(Guid userId, CreateOrderDto dto)
     {
-        var created = await _orderService.CreateAsync(userId, dto);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        try
+        {
+            var created = await _orderService.CreateAsync(userId, dto);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Внутрішня помилка сервера при створенні замовлення." });
+        }
     }
 
     /// <summary>

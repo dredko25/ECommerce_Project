@@ -6,7 +6,14 @@ document.addEventListener('DOMContentLoaded', () => {
     updateNavigation();
 
     if (document.getElementById('catalog-container')) {
+        loadFilterCategories();
         loadCatalogProducts();
+
+        document.getElementById('searchInput')?.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') applyFilters();
+        });
+
+        document.getElementById('categoryFilter')?.addEventListener('change', applyFilters);
     }
 
     if (document.getElementById('product-details-container')) {
@@ -16,7 +23,46 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('cart-container')) {
         loadCart();
     }
+
+    if (document.getElementById('checkout-container')) {
+        loadCheckoutSummary();
+    }
+
+    if (document.getElementById('orders-page-container')) {
+        loadUserOrders();
+    }
 });
+
+
+
+async function loadFilterCategories() {
+    const filterSelect = document.getElementById('categoryFilter');
+    if (!filterSelect) return;
+
+    try {
+        const response = await fetch('/api/categories');
+        if (response.ok) {
+            const data = await response.json();
+            const categories = Array.isArray(data) ? data : (data.items || []);
+
+            categories.forEach(cat => {
+                filterSelect.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+            });
+        }
+    } catch (error) {
+        console.error('Помилка завантаження категорій:', error);
+    }
+}
+
+let currentSearch = '';
+let currentCategory = '';
+
+window.applyFilters = function () {
+    currentSearch = document.getElementById('searchInput').value;
+    currentCategory = document.getElementById('categoryFilter').value;
+
+    loadCatalogProducts(currentSearch, currentCategory, 1);
+}
 
 function getUserRole() {
     const token = localStorage.getItem('token');
@@ -65,12 +111,14 @@ function updateNavigation() {
     const navCart = document.getElementById('nav-cart');
     const navLogout = document.getElementById('nav-logout');
     const navAdmin = document.getElementById('nav-admin');
+    const navOrders = document.getElementById('nav-orders');
 
     if (token) {
         if (navLogin) navLogin.classList.add('d-none');
         if (navRegister) navRegister.classList.add('d-none');
         if (navCart) navCart.classList.remove('d-none');
         if (navLogout) navLogout.classList.remove('d-none');
+        if (navOrders) navOrders.classList.remove('d-none');
 
         if (navAdmin) {
             if (role === 'Admin') {
@@ -85,6 +133,7 @@ function updateNavigation() {
         if (navCart) navCart.classList.add('d-none');
         if (navLogout) navLogout.classList.add('d-none');
         if (navAdmin) navAdmin.classList.add('d-none');
+        if (navOrders) navOrders.classList.add('d-none');
     }
 }
 
@@ -105,22 +154,76 @@ async function handleLogin(event) {
 
         const data = await response.json();
         const exactToken = data.accessToken;
+        const exactRefreshToken = data.refreshToken;
 
         let exactUserId = null;
         if (data.user && data.user.id) exactUserId = data.user.id;
 
         if (!exactUserId) {
-            alert("Бекенд не повернув ID! Відкрийте консоль (F12).");
+            alert("Бекенд не повернув ID!");
             return;
         }
 
         localStorage.setItem('token', exactToken);
+        localStorage.setItem('refreshToken', exactRefreshToken);
         localStorage.setItem('userId', exactUserId);
 
         window.location.href = '/';
     } catch (error) {
         alert(error.message);
     }
+}
+
+async function attemptRefreshToken() {
+    const userId = localStorage.getItem('userId');
+    const refreshToken = localStorage.getItem('refreshToken');
+
+    if (!userId || !refreshToken) return false;
+
+    try {
+        const response = await fetchWithAuth('/api/users/refresh-token', {
+            method: 'POST',
+            body: JSON.stringify({ userId: userId, refreshToken: refreshToken })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            localStorage.setItem('token', data.accessToken);
+            localStorage.setItem('refreshToken', data.refreshToken);
+            return true;
+        }
+    } catch (error) {
+        console.error("Помилка при спробі оновити токен:", error);
+    }
+
+    return false;
+}
+
+async function fetchWithAuth(url, options = {}) {
+    options.headers = {
+        ...options.headers,
+        ...getAuthHeaders()
+    };
+
+    let response = await fetch(url, options);
+
+    if (response.status === 401) {
+        console.warn("Токен протермінований.");
+
+        const isRefreshed = await attemptRefreshToken();
+
+        if (isRefreshed) {
+            console.log("Оновлення успішне. Повторюємо оригінальний запит.");
+            options.headers['Authorization'] = `Bearer ${localStorage.getItem('token')}`;
+            response = await fetch(url, options);
+        } else {
+            console.error("Сесія закінчена.");
+            window.handleLogout();
+            throw new Error('Ваша сесія закінчилась. Будь ласка, увійдіть знову.');
+        }
+    }
+
+    return response;
 }
 
 async function handleRegister(event) {
@@ -151,50 +254,166 @@ async function handleRegister(event) {
     }
 }
 
-window.handleLogout = function () {
+window.handleLogout = async function () {
+    const token = localStorage.getItem('token');
+
+    if (token) {
+        try {
+            await fetch('/api/users/logout', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            console.log("Сервер успішно знищив рефреш-токен");
+        } catch (error) {
+            console.error("Помилка при логауті на сервері:", error);
+        }
+    }
+
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('userId');
+
     updateNavigation();
     window.location.href = '/';
 }
 
-async function loadCatalogProducts() {
+async function loadCatalogProducts(search = '', categoryId = '', page = 1) {
     const container = document.getElementById('catalog-container');
+    const paginationContainer = document.getElementById('pagination-container');
+
+    container.innerHTML = `
+        <div class="text-center w-100" id="loading-spinner">
+            <div class="spinner-border text-secondary" role="status">
+                <span class="visually-hidden">Завантаження...</span>
+            </div>
+        </div>
+    `;
+
+    if (paginationContainer) paginationContainer.innerHTML = '';
 
     try {
-        const response = await fetch('/api/products');
+        let url = `/api/products?pageSize=12&pageNumber=${page}`;
+
+        if (search) {
+            url += `&search=${encodeURIComponent(search)}`;
+        }
+        if (categoryId) {
+            url += `&categoryId=${categoryId}`;
+        }
+
+        const response = await fetch(url);
         if (!response.ok) throw new Error(`Помилка HTTP: ${response.status}`);
         const data = await response.json();
 
         container.innerHTML = '';
         if (!data.items || data.items.length === 0) {
-            container.innerHTML = '<p class="text-center text-muted">Каталог поки що порожній.</p>';
+            container.innerHTML = '<p class="text-center text-muted">За вашим запитом нічого не знайдено.</p>';
             return;
         }
 
+        //data.items.forEach(product => {
+        //    const imageUrl = product.imageUrl || 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=600&auto=format&fit=crop';
+        //    container.innerHTML += `
+        //        <div class="col-md-4 col-sm-6 mb-4">
+        //            <div class="card h-100 border-0 shadow-sm">
+        //                <img src="${imageUrl}" class="card-img-top" alt="${product.name}" style="height: 300px; object-fit: cover;">
+        //                <div class="card-body text-center d-flex flex-column">
+        //                    <p class="text-muted small mb-1 text-uppercase">${product.categoryName || 'Прикраса'}</p>
+        //                    <a href="/Product?id=${product.id}" class="text-decoration-none text-dark">
+        //                        <h5 class="card-title mb-3">${product.name}</h5>
+        //                    </a>
+        //                    <div class="mt-auto">
+        //                        <h6 class="mb-3" style="font-size: 1.2rem;">${product.price} грн</h6>
+        //                        <button onclick="addToCart('${product.id}')" class="btn btn-outline-dark w-100 rounded-0">В кошик</button>
+        //                    </div>
+        //                </div>
+        //            </div>
+        //        </div>
+        //    `;
+        //});
         data.items.forEach(product => {
+            const isOutOfStock = product.quantityAvailable <= 0;
+            const btnClass = isOutOfStock ? 'btn-secondary disabled' : 'btn-outline-dark';
+            const btnText = isOutOfStock ? 'Немає в наявності' : 'В кошик';
+            const btnAction = isOutOfStock ? '' : `onclick="addToCart('${product.id}')"`;
             const imageUrl = product.imageUrl || 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=600&auto=format&fit=crop';
+
             container.innerHTML += `
-                <div class="col-md-4 col-sm-6 mb-4">
-                    <div class="card h-100 border-0 shadow-sm">
-                        <img src="${imageUrl}" class="card-img-top" alt="${product.name}" style="height: 300px; object-fit: cover;">
-                        <div class="card-body text-center d-flex flex-column">
-                            <p class="text-muted small mb-1 text-uppercase">${product.categoryName || 'Прикраса'}</p>
-                            <a href="/Product?id=${product.id}" class="text-decoration-none text-dark">
-                                <h5 class="card-title mb-3">${product.name}</h5>
-                            </a>
-                            <div class="mt-auto">
-                                <h6 class="mb-3" style="font-size: 1.2rem;">${product.price} грн</h6>
-                                <button onclick="addToCart('${product.id}')" class="btn btn-outline-dark w-100 rounded-0">В кошик</button>
-                            </div>
-                        </div>
+        <div class="col-md-4 col-sm-6 mb-4">
+            <div class="card h-100 border-0 shadow-sm ${isOutOfStock ? 'opacity-75' : ''}">
+                <img src="${imageUrl}" class="card-img-top ${isOutOfStock ? 'grayscale' : ''}" alt="${product.name}" style="height: 300px; object-fit: cover;">
+                <div class="card-body text-center d-flex flex-column">
+                    <p class="text-muted small mb-1 text-uppercase">${product.categoryName || 'Прикраса'}</p>
+                    <a ${isOutOfStock ? '' : `href="/Product?id=${product.id}"`} class="text-decoration-none text-dark ${isOutOfStock ? 'pe-none' : ''}">
+                        <h5 class="card-title mb-3">${product.name}</h5>
+                    </a>
+                    <div class="mt-auto">
+                        <h6 class="mb-3">${product.price} грн</h6>
+                        <button ${btnAction} class="btn ${btnClass} w-100 rounded-0">${btnText}</button>
                     </div>
                 </div>
-            `;
+            </div>
+        </div>
+    `;
         });
+
+        if (paginationContainer && data.totalCount > 0) {
+            const totalPages = Math.ceil(data.totalCount / data.pageSize);
+            renderPaginationControls(totalPages, data.pageNumber, paginationContainer);
+        }
+
     } catch (error) {
         console.error('Помилка при завантаженні:', error);
+        container.innerHTML = '<p class="text-center text-danger">Сталася помилка при завантаженні товарів.</p>';
     }
+}
+
+function renderPaginationControls(totalPages, currentPage, container) {
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let html = '<nav><ul class="pagination pagination-lg justify-content-center border-0">';
+
+    const prevDisabled = currentPage === 1 ? 'disabled' : '';
+    html += `
+        <li class="page-item ${prevDisabled}">
+            <button class="page-link text-dark rounded-0" 
+                    onclick="loadCatalogProducts(currentSearch, currentCategory, ${currentPage - 1})">
+                &laquo;
+            </button>
+        </li>
+    `;
+
+    for (let i = 1; i <= totalPages; i++) {
+        const activeClass = i === currentPage ? 'active bg-dark border-dark text-white' : 'text-dark';
+
+        html += `
+            <li class="page-item">
+                <button class="page-link rounded-0 ${activeClass}" 
+                        onclick="loadCatalogProducts(currentSearch, currentCategory, ${i})">
+                    ${i}
+                </button>
+            </li>
+        `;
+    }
+
+    const nextDisabled = currentPage === totalPages ? 'disabled' : '';
+    html += `
+        <li class="page-item ${nextDisabled}">
+            <button class="page-link text-dark rounded-0" 
+                    onclick="loadCatalogProducts(currentSearch, currentCategory, ${currentPage + 1})">
+                &raquo;
+            </button>
+        </li>
+    `;
+
+    html += '</ul></nav>';
+    container.innerHTML = html;
 }
 
 async function loadProductDetails() {
@@ -241,9 +460,8 @@ window.addToCart = async function (productId) {
     }
 
     try {
-        const response = await fetch(`/api/cart/user/${userId}/items`, {
+        const response = await fetchWithAuth(`/api/cart/user/${userId}/items`, {
             method: 'POST',
-            headers: getAuthHeaders(),
             body: JSON.stringify({ productId: productId, quantity: 1 })
         });
 
@@ -267,11 +485,7 @@ async function loadCart() {
 
     try {
 
-        const response = await fetch(`/api/cart/user/${userId}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+        const response = await fetchWithAuth(`/api/cart/user/${userId}`);
 
         if (response.status === 404) {
             renderEmptyCart(container);
@@ -319,7 +533,19 @@ async function loadCart() {
                         </div>
                     </td>
                     <td>${item.unitPrice} грн</td>
-                    <td class="text-center">${item.quantity} шт.</td>
+                    <td>
+                        <div class="input-group input-group-sm mx-auto" style="width: 120px;">
+                            <button class="btn btn-outline-secondary" type="button"
+                                    onclick="changeQuantity('${item.id}', -1, ${item.quantity})">-</button>
+        
+                            <input type="number" class="form-control text-center" value="${item.quantity}" min="1" 
+                                   onchange="updateQuantity('${item.id}', this.value)"
+                                   onkeypress="if(event.key === 'Enter') this.blur();">
+        
+                            <button class="btn btn-outline-secondary" type="button" 
+                                    onclick="changeQuantity('${item.id}', 1, ${item.quantity})">+</button>
+                        </div>
+                    </td>
                     <td class="fw-bold">${itemTotal} грн</td>
                     <td class="text-end">
                         <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart('${item.id}')">
@@ -338,7 +564,7 @@ async function loadCart() {
                 <h3 style="font-family: 'Georgia', serif;">Разом: ${grandTotal} грн</h3>
             </div>
             <div class="d-flex justify-content-end mt-3">
-                <button class="btn btn-dark btn-lg rounded-0 px-5">ОФОРМИТИ ЗАМОВЛЕННЯ</button>
+                <button class="btn btn-dark btn-lg rounded-0 px-5" onclick="window.location.href='/Checkout'">ОФОРМИТИ ЗАМОВЛЕННЯ</button>
             </div>
         `;
 
@@ -346,6 +572,45 @@ async function loadCart() {
 
     } catch (error) {
         container.innerHTML = `<div class="alert alert-danger text-center">${error.message}</div>`;
+    }
+}
+
+window.changeQuantity = function (cartItemId, delta, currentQuantity) {
+    const newQuantity = parseInt(currentQuantity) + delta;
+
+    if (newQuantity < 1) return;
+
+    updateQuantity(cartItemId, newQuantity);
+}
+
+
+window.updateQuantity = async function (cartItemId, newQuantity) {
+    const userId = localStorage.getItem('userId');
+    const quantity = parseInt(newQuantity);
+
+  
+    if (isNaN(quantity) || quantity < 1) {
+        loadCart(); 
+        return;
+    }
+
+    try {
+        const response = await fetchWithAuth(`/api/cart/user/${userId}/items/${cartItemId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(quantity)
+        });
+
+        if (response.ok) {
+            loadCart();
+        } else {
+            alert('Не вдалося оновити кількість товару');
+            loadCart();
+        }
+    } catch (error) {
+        console.error("Помилка при оновленні кількості:", error);
     }
 }
 
@@ -375,12 +640,8 @@ window.removeFromCart = async function (cartItemId) {
     try {
         console.log(`Видаляємо cartItemId: ${cartItemId}`);
 
-        const response = await fetch(`/api/cart/items/${cartItemId}`, {
-            method: 'DELETE',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
+        const response = await fetchWithAuth(`/api/cart/items/${cartItemId}`, {
+            method: 'DELETE'
         });
 
         console.log("Статус видалення:", response.status);
@@ -388,11 +649,6 @@ window.removeFromCart = async function (cartItemId) {
         if (response.ok) {
             console.log("Товар успішно видалено");
             loadCart();
-        }
-        else if (response.status === 401) {
-            alert('Сесія закінчилася. Увійдіть знову.');
-            localStorage.clear();
-            window.location.href = '/Login';
         }
         else if (response.status === 404) {
             alert('Товар вже видалено або не знайдено в кошику.');
@@ -409,129 +665,204 @@ window.removeFromCart = async function (cartItemId) {
     }
 };
 
-async function loadAdminProducts() {
-    try {
-        const response = await fetch(`${API_URL}?pageNumber=1&pageSize=100`, {
-            method: 'GET',
-            headers: getAuthHeaders()
-        });
+let checkoutItems = [];
 
-        if (response.status === 401 || response.status === 403) {
-            document.getElementById('admin-auth-error').style.display = 'block';
+async function loadCheckoutSummary() {
+    const summaryContainer = document.getElementById('checkout-summary');
+    const totalContainer = document.getElementById('checkout-total');
+    const userId = localStorage.getItem('userId');
+
+    if (!userId) {
+        window.location.href = '/Login';
+        return;
+    }
+
+    try {
+        const response = await fetchWithAuth(`/api/cart/user/${userId}`);
+
+        if (!response.ok || response.status === 404) {
+            alert("Ваш кошик порожній!");
+            window.location.href = '/';
             return;
         }
 
-        if (!response.ok) throw new Error('Помилка завантаження товарів');
+        const cart = await response.json();
 
-        const data = await response.json();
-        renderAdminProductsTable(data.items);
+        if (!cart.items || cart.items.length === 0) {
+            alert("Ваш кошик порожній!");
+            window.location.href = '/';
+            return;
+        }
+
+        let html = '';
+        let grandTotal = 0;
+        checkoutItems = [];
+
+        cart.items.forEach(item => {
+            const itemTotal = item.unitPrice * item.quantity;
+            grandTotal += itemTotal;
+
+            checkoutItems.push({
+                productId: item.productId,
+                quantity: item.quantity
+            });
+
+            html += `
+                <div class="d-flex justify-content-between mb-3 align-items-center">
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-secondary rounded-pill me-2">${item.quantity}</span>
+                        <span>${item.productName}</span>
+                    </div>
+                    <span class="fw-bold">${itemTotal} грн</span>
+                </div>
+            `;
+        });
+
+        summaryContainer.innerHTML = html;
+        totalContainer.innerText = `${grandTotal} грн`;
+
     } catch (error) {
-        console.error(error);
+        summaryContainer.innerHTML = `<div class="alert alert-danger">Помилка завантаження даних</div>`;
     }
 }
 
-function renderAdminProductsTable(products) {
-    const tbody = document.getElementById('productsTableBody');
-    tbody.innerHTML = '';
-
-    products.forEach(product => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${product.name}</td>
-            <td>${product.description || '-'}</td>
-            <td>${product.price}</td>
-            <td>
-                <button onclick="openEditModal('${product.id}', '${product.description || ''}', ${product.price})">Редагувати</button>
-                <button onclick="deleteProduct('${product.id}')">Видалити</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-if (document.getElementById('addProductForm')) {
-    document.getElementById('addProductForm').addEventListener('submit', async function (e) {
+if (document.getElementById('checkoutForm')) {
+    document.getElementById('checkoutForm').addEventListener('submit', async function (e) {
         e.preventDefault();
 
-        const newProduct = {
-            name: document.getElementById('addName').value,
-            description: document.getElementById('addDesc').value,
-            price: parseFloat(document.getElementById('addPrice').value),
-            quantityAvailable: parseInt(document.getElementById('addQty').value),
-            categoryId: document.getElementById('addCategory').value
+        const userId = localStorage.getItem('userId');
+        const submitBtn = document.getElementById('submitOrderBtn');
+
+        const createOrderDto = {
+            address: document.getElementById('address').value,
+            paymentMethod: document.getElementById('paymentMethod').value,
+            items: checkoutItems
         };
 
         try {
-            const response = await fetch(API_URL, {
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'ОБРОБКА...';
+
+            const response = await fetchWithAuth(`/api/orders/user/${userId}`, {
                 method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify(newProduct)
+                body: JSON.stringify(createOrderDto)
             });
 
-            if (response.ok) {
-                alert('Товар успішно додано!');
-                this.reset();
-                loadAdminProducts();
-            } else {
-                alert('Помилка при додаванні товару');
+            if (!response.ok) {
+                const err = await response.text();
+                throw new Error(err || 'Помилка при створенні замовлення');
             }
+
+            await fetchWithAuth(`/api/cart/user/${userId}`, {
+                method: 'DELETE'
+            });
+
+            alert('Дякуємо! Ваше замовлення успішно оформлено.');
+            window.location.href = '/';
+
         } catch (error) {
             console.error('Помилка:', error);
+            alert(error.message);
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'ПІДТВЕРДИТИ ЗАМОВЛЕННЯ';
         }
     });
 }
 
-window.deleteProduct = async function (id) {
-    if (!confirm('Ви впевнені, що хочете видалити цей товар?')) return;
+async function loadUserOrders() {
+    const tbody = document.getElementById('orders-table-body');
+    const userId = localStorage.getItem('userId');
 
     try {
-        const response = await fetch(`${API_URL}/${id}`, {
-            method: 'DELETE',
-            headers: getAuthHeaders()
-        });
+        const response = await fetchWithAuth(`/api/orders/user/${userId}`);
+        const orders = await response.json();
 
-        if (response.ok) {
-            loadAdminProducts();
-        } else {
-            alert('Помилка при видаленні');
+        if (!orders || orders.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Ви ще не робили замовлень</td></tr>';
+            return;
         }
+
+        tbody.innerHTML = orders.map(order => `
+            <tr>
+                <td class="fw-bold">${order.orderNumber}</td>
+                <td>${new Date(order.orderDate).toLocaleDateString()}</td>
+                <td>${order.totalAmount} грн</td>
+                <td><span class="badge ${getStatusBadgeClass(order.status)} fw-normal">${getStatusName(order.status)}</span></td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-dark rounded-0" onclick="viewOrderDetails('${order.id}')">
+                        Переглянути
+                    </button>
+                </td>
+            </tr>
+        `).join('');
     } catch (error) {
-        console.error('Помилка:', error);
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-danger">Помилка завантаження</td></tr>';
     }
 }
-
-window.openEditModal = function (id, currentDesc, currentPrice) {
-    document.getElementById('editProductId').value = id;
-    document.getElementById('editDesc').value = currentDesc;
-    document.getElementById('editPrice').value = currentPrice;
-    document.getElementById('editProductModal').style.display = 'block';
-}
-
-window.closeEditModal = function () {
-    document.getElementById('editProductModal').style.display = 'none';
-}
-
-window.saveChanges = async function () {
-    const id = document.getElementById('editProductId').value;
-    const updateDto = {
-        description: document.getElementById('editDesc').value,
-        price: parseFloat(document.getElementById('editPrice').value)
+function getStatusBadgeClass(status) {
+    const badgeMap = {
+        'Pending': 'bg-warning text-dark',      // Жовтий - в обробці
+        'Paid': 'bg-primary text-white',        // Синій - оплачено
+        'Shipped': 'bg-info text-dark',         // Блакитний - відправлено
+        'Delivered': 'bg-success text-white',   // Зелений - доставлено
+        'Cancelled': 'bg-danger text-white'     // Червоний - скасовано
     };
 
-    try {
-        const response = await fetch(`${API_URL}/${id}`, {
-            method: 'PATCH',
-            headers: getAuthHeaders(),
-            body: JSON.stringify(updateDto)
-        });
+    // Якщо статус не знайдено - сірий
+    return badgeMap[status] || 'bg-secondary text-white';
+}
 
-        if (response.ok) {
-            closeEditModal();
-            loadAdminProducts();
-        } else {
-            alert('Помилка при оновленні товару');
-        }
+async function viewOrderDetails(orderId) {
+    const modalContent = document.getElementById('order-modal-content');
+    const modal = new bootstrap.Modal(document.getElementById('orderDetailsModal'));
+
+    try {
+        const response = await fetchWithAuth(`/api/orders/${orderId}`);
+        const order = await response.json();
+
+        modalContent.innerHTML = `
+            <div class="mb-4">
+                <p class="mb-1 text-muted small">Адреса доставки:</p>
+                <p class="fw-bold">${order.address}</p>
+                <p class="mb-1 text-muted small">Спосіб оплати:</p>
+                <p class="fw-bold">${order.paymentMethod}</p>
+            </div>
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Товар</th>
+                        <th class="text-center">К-сть</th>
+                        <th class="text-end">Ціна</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${order.orderItems.map(item => `
+                        <tr>
+                            <td>${item.productName}</td>
+                            <td class="text-center">${item.quantity}</td>
+                            <td class="text-end">${item.price} грн</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            <div class="text-end mt-3">
+                <h5>Всього: ${order.totalAmount} грн</h5>
+            </div>
+        `;
+        modal.show();
     } catch (error) {
-        console.error('Помилка:', error);
+        alert("Не вдалося завантажити деталі замовлення");
     }
+}
+
+function getStatusName(status) {
+    const statusMap = {
+        'Pending': 'В обробці',
+        'Paid': 'Оплачено',
+        'Shipped': 'Відправлено',
+        'Delivered': 'Доставлено',
+        'Cancelled': 'Скасовано'
+    };
+
+    return statusMap[status] || status;
 }

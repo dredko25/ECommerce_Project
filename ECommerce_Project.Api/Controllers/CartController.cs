@@ -39,8 +39,15 @@ public class CartController : ControllerBase
     [HttpPost("user/{userId:guid}/items")]
     public async Task<ActionResult<CartResponseDto>> AddItem(Guid userId, [FromBody] AddToCartDto dto)
     {
-        var cart = await _cartService.AddItemAsync(userId, dto);
-        return Ok(cart);
+        try
+        {
+            var cart = await _cartService.AddItemAsync(userId, dto);
+            return Ok(cart);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -53,11 +60,17 @@ public class CartController : ControllerBase
     /// an HTTP 400 Bad Request if validation fails (e.g., exceeding available stock); 
     /// or an HTTP 404 Not Found if the cart or item does not exist.</returns>
     [HttpPatch("user/{userId:guid}/items/{cartItemId:guid}")]
-    public async Task<ActionResult<CartResponseDto>> UpdateQuantity(
-        Guid userId, Guid cartItemId, [FromBody] int quantity)
+    public async Task<ActionResult<CartResponseDto>> UpdateQuantity(Guid userId, Guid cartItemId, [FromBody] int quantity)
     {
-        var cart = await _cartService.UpdateItemQuantityAsync(userId, cartItemId, quantity);
-        return cart is null ? NotFound() : Ok(cart);
+        try
+        {
+            var cart = await _cartService.UpdateItemQuantityAsync(userId, cartItemId, quantity);
+            return cart is null ? NotFound() : Ok(cart);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     /// <summary>
