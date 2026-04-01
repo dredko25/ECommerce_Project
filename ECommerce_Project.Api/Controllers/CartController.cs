@@ -16,13 +16,26 @@ public class CartController : ControllerBase
         _cartService = cartService;
     }
 
+    /// <summary>
+    /// Retrieves the active shopping cart and its items for a specific user.
+    /// </summary>
+    /// <param name="userId">The unique identifier of the user whose cart is to be retrieved.</param>
+    /// <returns>An HTTP 200 OK response with the cart details if found; 
+    /// otherwise, an HTTP 404 Not Found response.</returns>
     [HttpGet("user/{userId:guid}")]
     public async Task<ActionResult<CartResponseDto>> GetByUser(Guid userId)
     {
         var cart = await _cartService.GetByUserAsync(userId);
         return cart is null ? NotFound() : Ok(cart);
     }
-    
+
+    /// <summary>
+    /// Adds a new item to the user's shopping cart or increments the quantity if the item already exists.
+    /// </summary>
+    /// <param name="userId">The unique identifier of the user.</param>
+    /// <param name="dto">The data transfer object containing the product ID and quantity to add.</param>
+    /// <returns>An HTTP 200 OK response with the updated cart details if successful; 
+    /// or an HTTP 400 Bad Request if validation fails (e.g., requested quantity exceeds available stock).</returns>
     [HttpPost("user/{userId:guid}/items")]
     public async Task<ActionResult<CartResponseDto>> AddItem(Guid userId, [FromBody] AddToCartDto dto)
     {
@@ -30,6 +43,15 @@ public class CartController : ControllerBase
         return Ok(cart);
     }
 
+    /// <summary>
+    /// Updates the quantity of a specific item currently in the user's shopping cart.
+    /// </summary>
+    /// <param name="userId">The unique identifier of the user.</param>
+    /// <param name="cartItemId">The unique identifier of the cart item to update.</param>
+    /// <param name="quantity">The new required quantity for the cart item.</param>
+    /// <returns>An HTTP 200 OK response with the updated cart details if successful; 
+    /// an HTTP 400 Bad Request if validation fails (e.g., exceeding available stock); 
+    /// or an HTTP 404 Not Found if the cart or item does not exist.</returns>
     [HttpPatch("user/{userId:guid}/items/{cartItemId:guid}")]
     public async Task<ActionResult<CartResponseDto>> UpdateQuantity(
         Guid userId, Guid cartItemId, [FromBody] int quantity)
@@ -38,6 +60,13 @@ public class CartController : ControllerBase
         return cart is null ? NotFound() : Ok(cart);
     }
 
+    /// <summary>
+    /// Removes a specific item from the authenticated user's shopping cart.
+    /// </summary>
+    /// <param name="cartItemId">The unique identifier of the cart item to remove.</param>
+    /// <returns>An HTTP 200 OK response with the updated cart details if the item was successfully removed; 
+    /// an HTTP 401 Unauthorized if the user is not authenticated properly; 
+    /// or an HTTP 404 Not Found if the item is not found in the cart.</returns>
     [HttpDelete("items/{cartItemId:guid}")]
     public async Task<ActionResult<CartResponseDto>> RemoveItem(Guid cartItemId)
     {
@@ -54,6 +83,11 @@ public class CartController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Clears all items from a specific user's shopping cart.
+    /// </summary>
+    /// <param name="userId">The unique identifier of the user whose cart will be cleared.</param>
+    /// <returns>An HTTP 204 No Content response indicating the cart was successfully cleared.</returns>
     [HttpDelete("user/{userId:guid}")]
     public async Task<IActionResult> Clear(Guid userId)
     {
