@@ -9,11 +9,12 @@ public class CartService : ICartService
 {
     private readonly ECommerceDbContext _context;
     private readonly IMapper _mapper;
-
-    public CartService(ECommerceDbContext context, IMapper mapper)
+    private readonly ILogger<CartService> _logger;
+    public CartService(ECommerceDbContext context, IMapper mapper, ILogger<CartService> logger)
     {
         _context = context;
         _mapper = mapper;
+        _logger = logger;
     }
 
     /// <summary>
@@ -36,9 +37,16 @@ public class CartService : ICartService
     /// representing the user's cart and its items, or <see langword="null"/> if no cart exists for the specified user.</returns>
     public async Task<CartResponseDto?> GetByUserAsync(Guid userId)
     {
+        _logger.LogInformation("Отримання кошика користувача {UserId}.", userId);
+
         var cart = await GetCartWithItems()
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.UserId == userId);
+
+        if (cart == null)
+        {
+            _logger.LogInformation("Кошик користувача {UserId} не існує.", userId);
+        }
 
         return _mapper.Map<CartResponseDto?>(cart);
     }
@@ -55,10 +63,16 @@ public class CartService : ICartService
     /// the updated state of the user's cart.</returns>
     public async Task<CartResponseDto> AddItemAsync(Guid userId, AddToCartDto dto)
     {
+        _logger.LogInformation("Спроба додати товар {ProductId} у кошик користувача {UserId}.", dto.ProductId, userId);
+
         var product = await _context.Products
             .FindAsync(dto.ProductId);
-        if (product == null) 
+
+        if (product == null)
+        {
+            _logger.LogWarning("Товар не додано в кошик. Товар {ProductId} не знайдено в базі.", dto.ProductId);
             throw new Exception("Товар не знайдено");
+        }
 
         var cart = await _context.Carts
             .Include(c => c.CartItems)
@@ -75,17 +89,25 @@ public class CartService : ICartService
 
             _context.Carts.Add(cart);
             await _context.SaveChangesAsync();
+            _logger.LogInformation("Створено новий кошик {CartId} для користувача {UserId}.", cart.Id, userId);
         }
 
         var existingItem = cart.CartItems.FirstOrDefault(i => i.ProductId == dto.ProductId);
         int requestedQuantity = (existingItem?.Quantity ?? 0) + dto.Quantity;
 
         if (requestedQuantity > product.QuantityAvailable)
+        {
+            _logger.LogWarning("Користувач {UserId} спробував додати {RequestedQty} шт. товару {ProductId}, але на складі лише {AvailableQty}.",
+                userId, dto.Quantity, product.Id, product.QuantityAvailable);
+            
             throw new InvalidOperationException($"На складі доступно лише {product.QuantityAvailable} шт.");
+
+        }
 
         if (existingItem != null)
         {
             existingItem.Quantity += dto.Quantity;
+            _logger.LogInformation("Оновлено кількість товару {ProductId} в кошику користувача {UserId}. Нова кількість: {NewQuantity}.", dto.ProductId, userId, existingItem.Quantity);
         }
         else
         {
@@ -98,6 +120,7 @@ public class CartService : ICartService
             };
 
             _context.CartItems.Add(newItem);
+            _logger.LogInformation("Товар {ProductId} додано в кошик {CartId}.", dto.ProductId, cart.Id);
         }
 
         await _context.SaveChangesAsync();
@@ -119,28 +142,40 @@ public class CartService : ICartService
     /// does not exist.</returns>
     public async Task<CartResponseDto?> UpdateItemQuantityAsync(Guid userId, Guid cartItemId, int quantity)
     {
+        _logger.LogInformation("Користувач {UserId} змінює кількість товару {CartItemId} на {Quantity}.", userId, cartItemId, quantity);
+
         var cart = await _context.Carts
             .Include(c => c.CartItems)
             .ThenInclude(i => i.Product)
             .FirstOrDefaultAsync(c => c.UserId == userId);
 
-        if (cart == null) return null;
+        if (cart == null)
+        {
+            _logger.LogWarning("Спроба оновити кількість товару у неіснуючому кошику для користувача {UserId}.", userId);
+            return null;
+        }
 
         var item = cart.CartItems.FirstOrDefault(i => i.Id == cartItemId);
-        if (item == null) return null;
+        if (item == null)
+        {
+            _logger.LogWarning("Товар кошика {CartItemId} не знайдено у кошику користувача {UserId}.", cartItemId, userId);
+            return null;
+        }
 
-        if (quantity <= 0)
+        //if (quantity <= 0)
+        //{
+        //    _context.CartItems.Remove(item);
+        //    _logger.LogInformation("Позицію кошика {CartItemId} видалено.", cartItemId);
+        //}
+        //else
+        //{
+        if (quantity > item.Product?.QuantityAvailable)
         {
-            _context.CartItems.Remove(item);
+            _logger.LogWarning("Користувач {UserId} перевищив ліміт залишків. Задано: {Quantity}, доступно: {AvailableQuantity}.", userId, quantity, item.Product.QuantityAvailable);
+            throw new InvalidOperationException($"Максимально доступна кількість: {item.Product.QuantityAvailable} шт.");
         }
-        else
-        {
-            if (quantity > item.Product?.QuantityAvailable)
-            {
-                throw new InvalidOperationException($"Максимально доступна кількість: {item.Product.QuantityAvailable} шт.");
-            }
-            item.Quantity = quantity;
-        }
+        item.Quantity = quantity;
+        //}
 
         await _context.SaveChangesAsync();
 
@@ -162,6 +197,7 @@ public class CartService : ICartService
     /// the updated cart information if the cart and item exist; otherwise, <see langword="null"/>.</returns>
     public async Task<CartResponseDto?> RemoveItemAsync(Guid userId, Guid cartItemId)
     {
+        _logger.LogInformation("Спроба видалення товару {CartItemId} з кошика користувача {UserId}.", cartItemId, userId);
         var cart = await _context.Carts
             .Include(c => c.CartItems)
             .FirstOrDefaultAsync(c => c.UserId == userId);
@@ -173,6 +209,7 @@ public class CartService : ICartService
 
         _context.CartItems.Remove(item);
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Позицію {CartItemId} успішно видалено.", cartItemId);
 
         var updatedCart = await GetCartWithItems()
             .AsNoTracking()
@@ -190,13 +227,21 @@ public class CartService : ICartService
     /// <returns>A task that represents the asynchronous clear operation.</returns>
     public async Task ClearAsync(Guid userId)
     {
+        _logger.LogInformation("Очищення всього кошика для користувача {UserId}.", userId);
+
         var cart = await _context.Carts
             .Include(c => c.CartItems)
             .FirstOrDefaultAsync(c => c.UserId == userId);
 
-        if (cart == null) return;
+        if (cart == null)
+        {
+            _logger.LogInformation("Кошик користувача {UserId} вже порожній або не існує.", userId);
+            return;
+        }
 
         _context.CartItems.RemoveRange(cart.CartItems);
         await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Кошик користувача {UserId} успішно очищено.", userId);
     }
 }
