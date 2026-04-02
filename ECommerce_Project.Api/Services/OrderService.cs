@@ -9,11 +9,13 @@ public class OrderService : IOrderService
 {
     private readonly ECommerceDbContext _context;
     private readonly IMapper _mapper;
+    private readonly ILogger<OrderService> _logger;
 
-    public OrderService(ECommerceDbContext context, IMapper mapper)
+    public OrderService(ECommerceDbContext context, IMapper mapper, ILogger<OrderService> logger)
     {
         _context = context;
         _mapper = mapper;
+        _logger = logger;
     }
 
     /// <summary>
@@ -80,6 +82,8 @@ public class OrderService : IOrderService
     /// <exception cref="Exception">Thrown if the order cannot be retrieved after creation.</exception>
     public async Task<OrderResponseDto> CreateAsync(Guid userId, CreateOrderDto dto)
     {
+        _logger.LogInformation("Розпочато оформлення замовлення для користувача {UserId}.", userId);
+
         var order = _mapper.Map<OrderEntity>(dto);
 
         order.Id = Guid.NewGuid();
@@ -99,10 +103,16 @@ public class OrderService : IOrderService
         foreach (var item in dto.Items)
         {
             if (!products.TryGetValue(item.ProductId, out var product))
+            {
+                _logger.LogWarning("При оформленні замовлення користувачем {UserId} не знайдено товар {ProductId}.", userId, item.ProductId);
                 throw new Exception($"Товар з ID {item.ProductId} не знайдено.");
+            }
 
             if (item.Quantity > product.QuantityAvailable)
             {
+                _logger.LogWarning("Недостатньо товару {ProductId} для замовлення користувача {UserId}. Замовлено: {RequestedQty}, доступно: {AvailableQty}.",
+                    product.Id, userId, item.Quantity, product.QuantityAvailable);
+
                 throw new InvalidOperationException(
                     $"Недостатньо товару '{product.Name}' на складі. Доступно: {product.QuantityAvailable}, ви замовляєте: {item.Quantity}.");
             }
@@ -123,8 +133,18 @@ public class OrderService : IOrderService
         await _context.Orders.AddAsync(order);
         await _context.SaveChangesAsync();
 
-        return await GetByIdAsync(order.Id)
-            ?? throw new Exception("Order not found after create");
+        var createdOrder = await GetByIdAsync(order.Id);
+
+        if (createdOrder == null)
+        {
+            _logger.LogError("Замовлення {OrderId} не знайдено в БД після збереження.", order.Id);
+            throw new Exception("Замовлення не знайдено після створення.");
+        }
+
+        _logger.LogInformation("Замовлення {OrderId} (Номер: {OrderNumber}) на суму {TotalAmount} успішно створено для користувача {UserId}.",
+            order.Id, order.OrderNumber, order.TotalAmount, userId);
+
+        return createdOrder;
     }
 
     /// <summary>
@@ -138,13 +158,23 @@ public class OrderService : IOrderService
     public async Task<OrderResponseDto?> UpdateStatusAsync(Guid id, string status)
     {
         var order = await _context.Orders.FindAsync(id);
-        if (order is null) return null;
+        if (order is null)
+        {
+            _logger.LogWarning("Спроба оновити статус неіснуючого замовлення з ID {OrderId}.", id);
+            return null;
+        }
 
         if (!Enum.TryParse<OrderStatus>(status, out var parsed))
+        {
+            _logger.LogWarning("Спроба встановити неіснуючий статус '{Status}' для замовлення {OrderId}.", status, id);
             throw new ArgumentException($"Invalid status: {status}");
+        }
 
+        var oldStatus = order.Status;
         order.Status = parsed;
         await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Статус замовлення {OrderId} змінено з {OldStatus} на {NewStatus}.", id, oldStatus, parsed);
 
         return await GetByIdAsync(id);
     }
@@ -158,10 +188,16 @@ public class OrderService : IOrderService
     public async Task<bool> DeleteAsync(Guid id)
     {
         var order = await _context.Orders.FindAsync(id);
-        if (order is null) return false;
+        if (order is null)
+        {
+            _logger.LogWarning("Спроба видалити неіснуюче замовлення з ID {OrderId}.", id);
+            return false;
+        }
 
         _context.Orders.Remove(order);
         await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Замовлення {OrderId} успішно видалено.", id);
         return true;
     }
 }
