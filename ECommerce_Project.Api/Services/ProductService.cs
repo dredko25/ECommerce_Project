@@ -10,11 +10,13 @@ public class ProductService : IProductService
 {
     private readonly ECommerceDbContext _context;
     private readonly IMapper _mapper;
+    private readonly ILogger<ProductService> _logger;
 
-    public ProductService(ECommerceDbContext context, IMapper mapper)
+    public ProductService(ECommerceDbContext context, IMapper mapper, ILogger<ProductService> logger)
     {
         _context = context;
         _mapper = mapper;
+        _logger = logger;
     }
 
     /// <summary>
@@ -48,6 +50,7 @@ public class ProductService : IProductService
         var totalItems = await query.CountAsync();
 
         var products = await query
+            .OrderBy(p => p.Name)
             .Skip((productParams.PageNumber - 1) * productParams.PageSize)
             .Take(productParams.PageSize)
             .ToListAsync();
@@ -88,14 +91,24 @@ public class ProductService : IProductService
     /// <exception cref="Exception">Thrown if the product cannot be retrieved after creation.</exception>
     public async Task<ProductResponseDto> CreateAsync(CreateProductDto dto)
     {
+        _logger.LogInformation("Спроба створення нового товару з назвою: {ProductName}.", dto.Name);
+
         var product = _mapper.Map<ProductEntity>(dto);
         product.Id = Guid.NewGuid();
 
         await _context.Products.AddAsync(product);
         await _context.SaveChangesAsync();
 
-        return await GetByIdAsync(product.Id)
-            ?? throw new Exception("Product not found after create");
+        var createdProduct = await GetByIdAsync(product.Id);
+
+        if (createdProduct == null)
+        {
+            _logger.LogError("Товар {ProductId} не знайдено в БД після збереження.", product.Id);
+            throw new Exception("Product not found after create");
+        }
+
+        _logger.LogInformation("Товар {ProductName} успішно створено з ID: {ProductId}.", dto.Name, product.Id);
+        return createdProduct;
     }
 
     /// <summary>
@@ -108,7 +121,11 @@ public class ProductService : IProductService
     public async Task<ProductResponseDto?> UpdateAsync(Guid id, UpdateProductDto dto)
     {
         var product = await _context.Products.FindAsync(id);
-        if (product is null) return null;
+        if (product is null)
+        {
+            _logger.LogWarning("Не вдалося оновити, бо товар з ID {ProductId} не знайдено.", id);
+            return null;
+        }
 
         if (dto.Name != null) product.Name = dto.Name;
         if (dto.Description != null) product.Description = dto.Description;
@@ -118,6 +135,7 @@ public class ProductService : IProductService
         if (dto.CategoryId.HasValue) product.CategoryId = dto.CategoryId.Value;
 
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Товар з ID {ProductId} успішно оновлено.", id);
         return await GetByIdAsync(id);
     }
 
@@ -130,10 +148,15 @@ public class ProductService : IProductService
     public async Task<bool> DeleteAsync(Guid id)
     {
         var product = await _context.Products.FindAsync(id);
-        if (product is null) return false;
+        if (product is null)
+        {
+            _logger.LogWarning("Не вдалося видалити, бо товар з ID {ProductId} не знайдено.", id);
+            return false;
+        }
 
         _context.Products.Remove(product);
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Товар з ID {ProductId} успішно видалено.", id);
         return true;
     }
 }
