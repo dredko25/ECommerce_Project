@@ -62,12 +62,14 @@ public class UserService : IUserService
     /// <exception cref="InvalidOperationException">Thrown if a user with the specified email address already exists.</exception>
     public async Task<AuthResponseDto> CreateAsync(CreateUserDto dto)
     {
+        _logger.LogInformation("Розпочато процес реєстрації для email: {Email}.", dto.Email);
+
         var emailExists = await _context.Users
             .AnyAsync(u => u.Email == dto.Email);
 
         if (emailExists)
         {
-            _logger.LogWarning("email вже існує: {Email}", dto.Email);
+            _logger.LogWarning("Реєстрація відхилена, бо email {Email} вже існує в системі.", dto.Email);
             throw new InvalidOperationException("Email вже зареєстрований");
         }
 
@@ -75,7 +77,7 @@ public class UserService : IUserService
         user.Id = Guid.NewGuid();
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
 
-        _logger.LogInformation("Зареєстровано! UserId: {UserId}", user.Id);
+        _logger.LogInformation("Користувача {Email} успішно зареєстровано з ID: {UserId}", dto.Email, user.Id);
 
         await _context.Users.AddAsync(user);
         await _context.SaveChangesAsync();
@@ -108,7 +110,7 @@ public class UserService : IUserService
             throw new UnauthorizedAccessException("Неправильний email або пароль");
         }
 
-        _logger.LogInformation("Успішний логін. UserId: {UserId}", user.Id);
+        _logger.LogInformation("Успішний вхід. UserId: {UserId}", user.Id);
 
         var token = _tokenService.GenerateAccessToken(user);
 
@@ -133,13 +135,18 @@ public class UserService : IUserService
     public async Task<UserResponseDto?> UpdateAsync(Guid id, UpdateUserDto dto)
     {
         var user = await _context.Users.FindAsync(id);
-        if (user is null) return null;
+        if (user is null)
+        {
+            _logger.LogWarning("Спроба оновити профіль неіснуючого користувача з ID: {UserId}.", id);
+            return null;
+        }
 
         if (dto.FirstName != null) user.FirstName = dto.FirstName;
         if (dto.LastName != null) user.LastName = dto.LastName;
         if (dto.ContactNumber != null) user.ContactNumber = dto.ContactNumber;
 
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Профіль користувача {UserId} успішно оновлено.", id);
         return _mapper.Map<UserResponseDto>(user);
     }
 
@@ -156,6 +163,7 @@ public class UserService : IUserService
 
         _context.Users.Remove(user);
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Акаунт користувача {UserId} успішно видалено з системи.", id);
         return true;
     }
 
@@ -169,15 +177,17 @@ public class UserService : IUserService
     /// null.</returns>
     public async Task<AuthResponseDto?> RefreshTokensAsync(RefreshTokenRequestDto dto)
     {
+        _logger.LogInformation("Спроба оновлення токенів для UserId: {UserId}.", dto.UserId);
+
         var user = await _tokenService.ValidateRefreshTokenAsync(dto.UserId, dto.RefreshToken);
         if (user is null)
         {
-            _logger.LogWarning("Невалідний refresh token для UserId: {UserId}", dto.UserId);
+            _logger.LogWarning("Невалідний refresh token для UserId: {UserId}.", dto.UserId);
             return null;
         }
         var newAccessToken = _tokenService.GenerateAccessToken(user);
         var newRefreshToken = await _tokenService.GenerateAndSaveRefreshTokenAsync(user);
-
+        _logger.LogInformation("Токени для користувача {UserId} успішно оновлено.", dto.UserId);
         return new AuthResponseDto
         {
             AccessToken = newAccessToken,
@@ -209,7 +219,7 @@ public class UserService : IUserService
 
         await _context.SaveChangesAsync();
 
-        _logger.LogInformation("Користувач успішно вийшов. Токен видалено. UserId: {UserId}", userId);
+        _logger.LogInformation("Користувач {UserId} успішно вийшов. Сесію закрито (токен видалено).", userId);
 
         return true;
     }
