@@ -11,11 +11,13 @@ namespace ECommerce_Project.Api.Services
     {
         private readonly ECommerceDbContext _context;
         private readonly IMapper _mapper;
+        private readonly ILogger<CategoryService> _logger;
 
-        public CategoryService(ECommerceDbContext context, IMapper mapper)
+        public CategoryService(ECommerceDbContext context, IMapper mapper, ILogger<CategoryService> logger)
         {
             _context = context;
             _mapper = mapper;
+            _logger = logger;
         }
 
         /// <summary>
@@ -27,6 +29,8 @@ namespace ECommerce_Project.Api.Services
         /// <exception cref="Exception">Thrown if the category cannot be retrieved after creation.</exception>
         public async Task<CategoryResponseDto> CreateAsync(CreateCategoryDto dto)
         {
+            _logger.LogInformation("Спроба створення нової категорії з назвою: {CategoryName}.", dto.Name);
+
             var category = _mapper.Map<CategoryEntity>(dto);
             category.Id = Guid.NewGuid();
 
@@ -46,10 +50,16 @@ namespace ECommerce_Project.Api.Services
         public async Task<bool> DeleteAsync(Guid id)
         {
             var category = await _context.Categories.FindAsync(id);
-            if (category is null) return false;
+            if (category is null)
+            {
+                _logger.LogWarning("Категорію з ID {CategoryId} не знайдено, щоб видалити.", id);
+                return false;
+            }
 
             _context.Categories.Remove(category);
             await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Категорію з ID {CategoryId} успішно видалено.", id);
             return true;
         }
 
