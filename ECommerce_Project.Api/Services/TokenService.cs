@@ -13,11 +13,13 @@ namespace ECommerce_Project.Api.Services
     {
         private readonly IConfiguration _configuration;
         private readonly ECommerceDbContext _context;
+        private readonly ILogger<TokenService> _logger;
 
-        public TokenService(IConfiguration configuration, ECommerceDbContext context)
+        public TokenService(IConfiguration configuration, ECommerceDbContext context, ILogger<TokenService> logger)
         {
             _configuration = configuration;
             _context = context;
+            _logger = logger;
         }
 
         /// <summary>
@@ -54,7 +56,7 @@ namespace ECommerce_Project.Api.Services
                 expires: DateTime.UtcNow.AddMinutes(15),
                 signingCredentials: creds
             );
-
+            _logger.LogInformation("Згенеровано новий Access Token для користувача {UserId} ({Role}).", user.Id, user.IsAdmin ? "Admin" : "Customer");
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
@@ -71,10 +73,25 @@ namespace ECommerce_Project.Api.Services
         {
             var user = await _context.Users
                 .FindAsync(userId);
-            if (user == null || user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+            if (user == null)
             {
+                _logger.LogWarning("Спроба валідації Refresh Token. Користувача {UserId} не знайдено.", userId);
                 return null;
             }
+
+            if (user.RefreshToken != refreshToken)
+            {
+                _logger.LogWarning("Спроба валідації Refresh Token. Токен не співпадає для користувача {UserId}. Можлива спроба злому.", userId);
+                return null;
+            }
+
+            if (user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+            {
+                _logger.LogInformation("Refresh Token для користувача {UserId} протермінований (закінчився {ExpiryTime}).", userId, user.RefreshTokenExpiryTime);
+                return null;
+            }
+
+            _logger.LogInformation("Refresh Token для користувача {UserId} успішно пройшов валідацію.", userId);
             return user;
         }
 
@@ -108,7 +125,7 @@ namespace ECommerce_Project.Api.Services
             user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
             
             await _context.SaveChangesAsync();
-            
+            _logger.LogInformation("Згенеровано та збережено новий Refresh Token для користувача {UserId}. Токен дійсний до {ExpiryTime}.", user.Id, user.RefreshTokenExpiryTime);
             return refreshToken;
         }
     }
