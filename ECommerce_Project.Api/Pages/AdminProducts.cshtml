@@ -181,8 +181,8 @@
             </div>
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js"></script>
     <script>
         let editModal;
 
@@ -322,8 +322,7 @@
                 .catch(error => console.error('Error loading categories:', error));
         }
 
-
-        function addProduct() {
+        async function addProduct() {
             const product = {
                 name: document.getElementById('addName').value,
                 description: document.getElementById('addDesc').value,
@@ -332,26 +331,50 @@
                 categoryId: document.getElementById('addCategorySelect').value,
                 imageUrl: document.getElementById('addImageUrl').value || null
             };
-            console.log('Sending product:', product);
 
-            fetch('/api/products', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(product)
-            })
-            .then(response => {
-                console.log('Response status:', response.status);
+            try {
+                const response = await fetchWithAuth('/api/products', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(product)
+                });
+
                 if (response.ok) {
                     document.getElementById('addProductForm').reset();
-                    loadProducts();
+                    const modalEl = document.getElementById('addProductModal');
+                    if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+            
+                    if (typeof loadProducts === 'function') loadProducts();
+                    if (typeof loadAdminProducts === 'function') loadAdminProducts();
                 } else {
-                    return response.text().then(text => alert('Помилка при додаванні товару: ' + text));
+                    const errData = await response.json();
+                    alert(getErrorMessage(errData));
                 }
-            })
-            .catch(error => console.error('Error:', error));
+            } catch (error) {
+                console.error('Error:', error);
+                if (error.message !== 'Ваша сесія закінчилась. Будь ласка, увійдіть знову.') {
+                    alert('Помилка з\'єднання з сервером.');
+                }
+            }
+        }
+
+        function getErrorMessage(err) {
+            console.log("Отримана помилка від сервера:", err);
+
+            if (!err) return "Невідома помилка.";
+
+            if (err.errors && typeof err.errors === 'object') {
+                const firstErrorKey = Object.keys(err.errors)[0];
+                if (err.errors[firstErrorKey] && err.errors[firstErrorKey].length > 0) {
+                    return err.errors[firstErrorKey][0];
+                }
+            }
+
+            if (err.title) return err.title;
+
+            return "Помилка: " + JSON.stringify(err);
         }
 
         function openEditModal(id) {
@@ -373,9 +396,8 @@
                 });
         }
 
-        function saveChanges() {
+        async function saveChanges() {
             const id = document.getElementById('editProductId').value;
-            
             const updatedProduct = {};
             
             const name = document.getElementById('editName').value;
@@ -396,23 +418,32 @@
             const imageUrl = document.getElementById('editImageUrl').value;
             if (imageUrl) updatedProduct.imageUrl = imageUrl;
 
-            fetch(`/api/products/${id}`, {
-                method: 'PATCH',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(updatedProduct)
-            })
-            .then(response => {
+            try {
+                const response = await fetchWithAuth(`/api/products/${id}`, {
+                    method: 'PATCH',
+                    headers: { 
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedProduct)
+                });
+
                 if (response.ok) {
-                    editModal.hide();
-                    loadProducts();
+                    if (typeof editModal !== 'undefined') {
+                        editModal.hide();
+                    } else {
+                        const modalEl = document.getElementById('editProductModal');
+                        if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+                    }
+            
+                    if (typeof loadProducts === 'function') loadProducts();
+                    if (typeof loadAdminProducts === 'function') loadAdminProducts();
                 } else {
-                    return response.text().then(text => alert('Помилка при оновленні товару: ' + text));
+                    const errData = await response.json();
+                    alert(getErrorMessage(errData));
                 }
-            })
-            .catch(error => console.error('Error:', error));
+            } catch (error) {
+                console.error('Error:', error);
+            }
         }
 
         function deleteProduct(id, name) {

@@ -181,8 +181,11 @@ async function attemptRefreshToken() {
     if (!userId || !refreshToken) return false;
 
     try {
-        const response = await fetchWithAuth('/api/users/refresh-token', {
+        const response = await fetch('/api/users/refresh-token', {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({ userId: userId, refreshToken: refreshToken })
         });
 
@@ -314,26 +317,6 @@ async function loadCatalogProducts(search = '', categoryId = '', page = 1) {
             return;
         }
 
-        //data.items.forEach(product => {
-        //    const imageUrl = product.imageUrl || 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=600&auto=format&fit=crop';
-        //    container.innerHTML += `
-        //        <div class="col-md-4 col-sm-6 mb-4">
-        //            <div class="card h-100 border-0 shadow-sm">
-        //                <img src="${imageUrl}" class="card-img-top" alt="${product.name}" style="height: 300px; object-fit: cover;">
-        //                <div class="card-body text-center d-flex flex-column">
-        //                    <p class="text-muted small mb-1 text-uppercase">${product.categoryName || 'Прикраса'}</p>
-        //                    <a href="/Product?id=${product.id}" class="text-decoration-none text-dark">
-        //                        <h5 class="card-title mb-3">${product.name}</h5>
-        //                    </a>
-        //                    <div class="mt-auto">
-        //                        <h6 class="mb-3" style="font-size: 1.2rem;">${product.price} грн</h6>
-        //                        <button onclick="addToCart('${product.id}')" class="btn btn-outline-dark w-100 rounded-0">В кошик</button>
-        //                    </div>
-        //                </div>
-        //            </div>
-        //        </div>
-        //    `;
-        //});
         data.items.forEach(product => {
             const isOutOfStock = product.quantityAvailable <= 0;
             const btnClass = isOutOfStock ? 'btn-secondary disabled' : 'btn-outline-dark';

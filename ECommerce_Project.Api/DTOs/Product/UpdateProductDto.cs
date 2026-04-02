@@ -11,7 +11,7 @@ namespace ECommerce_Project.Api.DTOs.Product
         [Range(0.01, double.MaxValue, ErrorMessage = "Ціна має бути більшою за 0")]
         public decimal? Price { get; set; }
 
-        [Range(0, int.MaxValue, ErrorMessage = "Кількість не може бути від'ємною")]
+        [Range(0, 100000, ErrorMessage = "Кількість має бути від 0 до 100 000 шт.")]
         public int? QuantityAvailable { get; set; }
 
         public string? ImageUrl { get; set; }
