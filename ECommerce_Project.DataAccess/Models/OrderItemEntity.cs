@@ -18,7 +18,6 @@ public class OrderItemEntity
 
     public int Quantity { get; set; } = 0;
 
-    [NotMapped]
     public decimal Total => Price * Quantity;
 
 }

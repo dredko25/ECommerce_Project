@@ -87,7 +87,7 @@ public class UserService : IUserService
         return new AuthResponseDto
         {
             AccessToken = token,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(15),
+            ExpiresAt = DateTime.UtcNow.AddMinutes(3),
             User = _mapper.Map<UserResponseDto>(user)
         };
     }
@@ -120,7 +120,7 @@ public class UserService : IUserService
         {
             AccessToken = token,
             RefreshToken = refreshToken,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(15),
+            ExpiresAt = DateTime.UtcNow.AddMinutes(3),
             User = _mapper.Map<UserResponseDto>(user)
         };
     }

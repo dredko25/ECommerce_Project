@@ -20,7 +20,7 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItemEntity>
                .WithMany()
                .HasForeignKey(oi => oi.ProductId)
                .IsRequired()
-               .OnDelete(DeleteBehavior.SetNull);
+               .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(oi => oi.Price)
                .IsRequired()
@@ -28,9 +28,6 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItemEntity>
 
         builder.Property(oi => oi.Quantity)
                .IsRequired();
-
-        builder.Property(oi => oi.Total)
-               .HasPrecision(18, 2);
 
         builder.Ignore(oi => oi.Total);
     }

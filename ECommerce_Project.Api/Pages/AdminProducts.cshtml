@@ -222,23 +222,27 @@
             }
         }
 
-        function loadProducts(page = 1) {
+        async function loadProducts(page = 1) {
             currentPage = page;
-    
-            fetch(`/api/products?pageNumber=${currentPage}&pageSize=${pageSize}`)
-                .then(response => response.json())
-                .then(data => {
+
+            try {
+                const response = await fetchWithAuth(`/api/products?pageNumber=${currentPage}&pageSize=${pageSize}`, {
+                    method: 'GET'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
                     const tbody = document.getElementById('productsTableBody');
-            
+        
                     const products = data.items || data.data || data;
                     totalPages = data.totalPages || data.totalPages || 1;
-            
+        
                     if (!Array.isArray(products) || products.length === 0) {
                         tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Немає товарів</td></tr>';
                         updatePaginationControls();
                         return;
                     }
-            
+        
                     tbody.innerHTML = products.map(product => `
                         <tr>
                             <td class="product-name">${escapeHtml(product.name)}</td>
@@ -258,13 +262,15 @@
                             </td>
                         </tr>
                     `).join('');
-            
+        
                     updatePaginationControls();
-                })
-                .catch(error => {
-                    console.error('Error loading products:', error);
-                    document.getElementById('productsTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Помилка завантаження товарів</td></tr>';
-                });
+                } else {
+                    throw new Error('Помилка сервера');
+                }
+            } catch (error) {
+                console.error('Error loading products:', error);
+                document.getElementById('productsTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Помилка завантаження товарів</td></tr>';
+            }
         }
 
         function updatePaginationControls() {
@@ -301,25 +307,31 @@
 
         let categories = [];
 
-        function loadCategories() {
-            fetch('/api/categories')
-                .then(response => response.json())
-                .then(data => {
+        async function loadCategories() {
+            try {
+                const response = await fetchWithAuth('/api/categories', {
+                    method: 'GET'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
                     categories = Array.isArray(data) ? data : (data.items || data.data || []);
-            
+        
                     const addCategorySelect = document.getElementById('addCategorySelect');
                     if (addCategorySelect) {
                         addCategorySelect.innerHTML = '<option value="">Оберіть категорію</option>' +
                             categories.map(cat => `<option value="${cat.id}">${escapeHtml(cat.name)}</option>`).join('');
                     }
-            
+        
                     const editCategorySelect = document.getElementById('editCategorySelect');
                     if (editCategorySelect) {
                         editCategorySelect.innerHTML = '<option value="">Оберіть категорію</option>' +
                             categories.map(cat => `<option value="${cat.id}">${escapeHtml(cat.name)}</option>`).join('');
                     }
-                })
-                .catch(error => console.error('Error loading categories:', error));
+                }
+            } catch (error) {
+                console.error('Error loading categories:', error);
+            }
         }
 
         async function addProduct() {
@@ -446,25 +458,32 @@
             }
         }
 
-        function deleteProduct(id, name) {
-            if (confirm(`Ви впевнені, що хочете видалити товар "${name}"? Цю дію не можна скасувати.`)) {
-                fetch(`/api/products/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}`}
-                })
-                .then(response => {
-                    if (response.ok) {
-                        loadProducts();
-                    } else if (response.status === 404) {
-                        alert('Товар не знайдено');
-                    } else {
-                        alert('Помилка при видаленні товару');
+        async function deleteProduct(id, name) {
+            if (!confirm(`Ви впевнені, що хочете видалити товар "${name}"? Цю дію не можна скасувати.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetchWithAuth(`/api/products/${id}`, { method: 'DELETE' });
+
+                if (response.ok) {
+                    if (typeof loadProducts === 'function') loadProducts();
+                    if (typeof loadAdminProducts === 'function') loadAdminProducts();
+                } else {
+                    const errorText = await response.text();
+                    let errData;
+                    try {
+                        errData = JSON.parse(errorText);
+                    } catch (e) {
+                        errData = errorText;
                     }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Помилка при видаленні товару');
-                });
+
+                    const cleanMessage = getErrorMessage(errData);
+                    alert(cleanMessage);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Помилка з\'єднання з сервером');
             }
         }
 

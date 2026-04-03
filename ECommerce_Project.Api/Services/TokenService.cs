@@ -53,7 +53,7 @@ namespace ECommerce_Project.Api.Services
                 issuer: _configuration["Jwt:Issuer"],
                 audience: _configuration["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(15),
+                expires: DateTime.UtcNow.AddMinutes(3),
                 signingCredentials: creds
             );
             _logger.LogInformation("Згенеровано новий Access Token для користувача {UserId} ({Role}).", user.Id, user.IsAdmin ? "Admin" : "Customer");

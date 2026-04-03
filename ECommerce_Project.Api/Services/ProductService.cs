@@ -154,9 +154,19 @@ public class ProductService : IProductService
             return false;
         }
 
-        _context.Products.Remove(product);
-        await _context.SaveChangesAsync();
-        _logger.LogInformation("Товар з ID {ProductId} успішно видалено.", id);
-        return true;
+        try
+        {
+            _context.Products.Remove(product);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Товар з ID {ProductId} успішно видалено.", id);
+            return true;
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Спроба видалення зв'язаного товару {ProductId}. Спрацював захист бази даних (RESTRICT).", id);
+
+            throw new InvalidOperationException("Неможливо видалити цей товар, оскільки він вже присутній в історії замовлень клієнтів. Замість видалення, спробуйте змінити його кількість на 0.");
+        }
     }
 }
