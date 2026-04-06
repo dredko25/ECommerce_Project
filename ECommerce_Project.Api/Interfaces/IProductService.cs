@@ -5,7 +5,7 @@ namespace ECommerce_Project.Api.Interfaces
 {
     public interface IProductService
     {
-        Task<PagedResponse<ProductSummaryDto>> GetProductsAsync(ProductParams productParams);
+        Task<PagedResponse<ProductSummaryDto>> GetProductsAsync(ProductParams productParams, CancellationToken cancellationToken);
 
         Task<ProductResponseDto?> GetByIdAsync(Guid id);
         

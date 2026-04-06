@@ -29,7 +29,7 @@ public class ProductService : IProductService
     /// size values.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains a paged response with product
     /// summary data matching the specified criteria. The response includes the total item count and paging information.</returns>
-    public async Task<PagedResponse<ProductSummaryDto>> GetProductsAsync(ProductParams productParams)
+    public async Task<PagedResponse<ProductSummaryDto>> GetProductsAsync(ProductParams productParams, CancellationToken cancellationToken = default)
     {
         var query = _context.Products
             .AsNoTracking()
@@ -47,13 +47,13 @@ public class ProductService : IProductService
             query = query.Where(p => p.Name.ToLower().Contains(searchLower));
         }
 
-        var totalItems = await query.CountAsync();
+        var totalItems = await query.CountAsync(cancellationToken);
 
         var products = await query
             .OrderBy(p => p.Name)
             .Skip((productParams.PageNumber - 1) * productParams.PageSize)
             .Take(productParams.PageSize)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return new PagedResponse<ProductSummaryDto>
         {

@@ -23,10 +23,23 @@ public class ProductsController : ControllerBase
     /// <returns>An HTTP 200 OK response containing a paginated list of product summaries.</returns>
     [HttpGet]
     public async Task<ActionResult<PagedResponse<ProductSummaryDto>>> GetProducts(
-    [FromQuery] ProductParams productParams)
+        [FromQuery] ProductParams productParams, CancellationToken cancellationToken)
     {
-        var products = await _productService.GetProductsAsync(productParams);
-        return Ok(products);
+        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken, timeoutCts.Token);
+
+        try
+        {
+            await Task.Delay(35000, linkedCts.Token);
+            var products = await _productService.GetProductsAsync(productParams, linkedCts.Token);
+            return Ok(products);
+        }
+        catch (OperationCanceledException)
+        {
+            return StatusCode(408, new { message = "Запит скасовано: перевищено час очікування (30 секунд)." });
+        }
     }
 
     /// <summary>

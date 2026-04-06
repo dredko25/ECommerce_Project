@@ -308,7 +308,15 @@ async function loadCatalogProducts(search = '', categoryId = '', page = 1) {
         }
 
         const response = await fetch(url);
-        if (!response.ok) throw new Error(`Помилка HTTP: ${response.status}`);
+        if (!response.ok) {
+            let backendMessage = `Помилка сервера: ${response.status}`;
+            const errData = await response.json();
+            if (errData.message) {
+                backendMessage = errData.message;
+            }
+
+            throw new Error(backendMessage);
+        }
         const data = await response.json();
 
         container.innerHTML = '';
@@ -349,8 +357,8 @@ async function loadCatalogProducts(search = '', categoryId = '', page = 1) {
         }
 
     } catch (error) {
-        console.error('Помилка при завантаженні:', error);
-        container.innerHTML = '<p class="text-center text-danger">Сталася помилка при завантаженні товарів.</p>';
+        console.error(error);
+        container.innerHTML = `<p class="text-center text-danger">${error.message}</p>`;
     }
 }
 
