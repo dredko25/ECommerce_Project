@@ -162,20 +162,12 @@ public class CartService : ICartService
             return null;
         }
 
-        //if (quantity <= 0)
-        //{
-        //    _context.CartItems.Remove(item);
-        //    _logger.LogInformation("Позицію кошика {CartItemId} видалено.", cartItemId);
-        //}
-        //else
-        //{
         if (quantity > item.Product?.QuantityAvailable)
         {
             _logger.LogWarning("Користувач {UserId} перевищив ліміт залишків. Задано: {Quantity}, доступно: {AvailableQuantity}.", userId, quantity, item.Product.QuantityAvailable);
             throw new InvalidOperationException($"Максимально доступна кількість: {item.Product.QuantityAvailable} шт.");
         }
         item.Quantity = quantity;
-        //}
 
         await _context.SaveChangesAsync();
 

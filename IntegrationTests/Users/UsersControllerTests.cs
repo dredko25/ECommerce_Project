@@ -231,5 +231,4 @@ public class UsersControllerTests : BaseFunctionalTest
         response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
     }
 
-
 }
