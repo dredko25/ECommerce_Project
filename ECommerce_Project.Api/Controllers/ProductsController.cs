@@ -32,7 +32,7 @@ public class ProductsController : ControllerBase
 
         try
         {
-            await Task.Delay(35000, linkedCts.Token);
+            //await Task.Delay(35000, linkedCts.Token);
             var products = await _productService.GetProductsAsync(productParams, linkedCts.Token);
             return Ok(products);
         }

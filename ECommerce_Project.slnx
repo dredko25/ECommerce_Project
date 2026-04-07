@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="ECommerce_Project.Api/ECommerce_Project.Api.csproj" />
   <Project Path="ECommerce_Project.DataAccess/ECommerce_Project.DataAccess.csproj" />
+  <Project Path="IntegrationTests/IntegrationTests.csproj" Id="48761f84-a681-43d0-8729-83a606ebe44d" />
 </Solution>
