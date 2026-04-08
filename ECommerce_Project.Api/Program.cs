@@ -21,8 +21,8 @@ builder.Services.AddDbContext<ECommerceDbContext>(
         options.UseNpgsql(builder.Configuration.GetConnectionString("DbConnection"));
     });
 
-
-builder.Services.AddAutoMapper(cfg => {}, AppDomain.CurrentDomain.GetAssemblies());
+// AutoMapper знайде збірку, де лежить клас Program, і відсканує тільки її, щоб не було конфлікту з тестами, які теж використовують AutoMapper і мають свої профілі.
+builder.Services.AddAutoMapper(cfg => {}, typeof(Program));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -92,3 +92,5 @@ app.MapRazorPages()
 app.MapControllers();
 
 app.Run();
+
+//public partial class Program;
